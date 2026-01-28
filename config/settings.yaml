@@ -1,0 +1,11 @@
+app_name: "AI Data Analyst"
+version: "1.0.0"
+layout: "wide"
+theme:
+  primaryColor: "#FF4B4B"
+  backgroundColor: "#FFFFFF"
+  secondaryBackgroundColor: "#F0F2F6"
+  textColor: "#262730"
+api_keys:
+  anthropic: ""
+  google: ""

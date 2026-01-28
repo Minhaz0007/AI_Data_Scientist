@@ -1,0 +1,16 @@
+streamlit
+pandas
+numpy
+scipy
+plotly
+matplotlib
+seaborn
+scikit-learn
+statsmodels
+anthropic
+google-generativeai
+python-docx
+reportlab
+openpyxl
+sqlalchemy
+pyyaml
