@@ -9,7 +9,12 @@ def render():
     tab1, tab2 = st.tabs(["File Upload", "SQL Database"])
 
     with tab1:
-        uploaded_file = st.file_uploader("Upload your dataset", type=['csv', 'xlsx', 'xls', 'json'])
+        st.info("No file size limits. Upload CSV, Excel (.xlsx, .xls, .xlsm), or JSON files.")
+        uploaded_file = st.file_uploader(
+            "Upload your dataset (drag and drop supported)",
+            type=['csv', 'xlsx', 'xls', 'xlsm', 'json'],
+            help="Supported formats: CSV, Excel (xlsx, xls, xlsm), JSON"
+        )
 
         if uploaded_file is not None:
             try:

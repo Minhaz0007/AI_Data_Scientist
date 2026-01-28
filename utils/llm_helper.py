@@ -1,25 +1,60 @@
 import os
-import anthropic
-import google.generativeai as genai
 
-def get_ai_response(prompt, api_key, provider='anthropic'):
+# LLM Provider configurations
+LLM_PROVIDERS = {
+    'anthropic': {
+        'name': 'Anthropic (Claude)',
+        'models': [
+            'claude-sonnet-4-20250514',
+            'claude-3-5-sonnet-20241022',
+            'claude-3-opus-20240229',
+            'claude-3-haiku-20240307'
+        ],
+        'default_model': 'claude-sonnet-4-20250514'
+    },
+    'google': {
+        'name': 'Google (Gemini)',
+        'models': [
+            'gemini-1.5-pro',
+            'gemini-1.5-flash',
+            'gemini-pro'
+        ],
+        'default_model': 'gemini-1.5-pro'
+    },
+    'openai': {
+        'name': 'OpenAI (GPT)',
+        'models': [
+            'gpt-4o',
+            'gpt-4o-mini',
+            'gpt-4-turbo',
+            'gpt-3.5-turbo'
+        ],
+        'default_model': 'gpt-4o'
+    }
+}
+
+def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_tokens=4096):
     """
     Generate a response from an LLM.
 
     Args:
         prompt: The prompt text.
         api_key: The API key.
-        provider: 'anthropic' or 'google'.
+        provider: 'anthropic', 'google', or 'openai'.
+        model: Specific model to use (optional, uses provider default if not specified).
+        max_tokens: Maximum tokens in the response.
     """
     if not api_key:
         return "Error: API key is missing."
 
     try:
         if provider == 'anthropic':
+            import anthropic
             client = anthropic.Anthropic(api_key=api_key)
+            model_name = model or LLM_PROVIDERS['anthropic']['default_model']
             message = client.messages.create(
-                model="claude-3-opus-20240229",
-                max_tokens=1024,
+                model=model_name,
+                max_tokens=max_tokens,
                 messages=[
                     {"role": "user", "content": prompt}
                 ]
@@ -27,13 +62,28 @@ def get_ai_response(prompt, api_key, provider='anthropic'):
             return message.content[0].text
 
         elif provider == 'google':
+            import google.generativeai as genai
             genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-pro')
-            response = model.generate_content(prompt)
+            model_name = model or LLM_PROVIDERS['google']['default_model']
+            model_instance = genai.GenerativeModel(model_name)
+            response = model_instance.generate_content(prompt)
             return response.text
 
+        elif provider == 'openai':
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+            model_name = model or LLM_PROVIDERS['openai']['default_model']
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens
+            )
+            return response.choices[0].message.content
+
         else:
-            return "Error: Unsupported provider."
+            return "Error: Unsupported provider. Choose 'anthropic', 'google', or 'openai'."
 
     except Exception as e:
         return f"Error generating response: {str(e)}"
@@ -58,5 +108,27 @@ def generate_insights_prompt(df_summary, analysis_results):
     4. Potential concerns or limitations in the data.
 
     Format the output clearly with headings.
+    """
+    return prompt
+
+def generate_chat_prompt(data_context, user_question, chat_history=None):
+    """
+    Constructs a prompt for the chat interface.
+    """
+    history_context = ""
+    if chat_history:
+        history_context = "\n\nPrevious conversation:\n"
+        for msg in chat_history[-5:]:  # Last 5 messages for context
+            history_context += f"{msg['role'].upper()}: {msg['content']}\n"
+
+    prompt = f"""
+    You are a data assistant. Here is the context of the dataset:
+    {data_context}
+    {history_context}
+
+    User Question: {user_question}
+
+    Answer the question based on the data provided. If you need to perform complex analysis, describe the steps.
+    If asked to show code, provide Python pandas code snippets.
     """
     return prompt
