@@ -1,0 +1,16 @@
+[server]
+# Remove file upload size limit (set to very high value in MB)
+# Streamlit Cloud may still have platform limits, but local/Railway/Render deployments will honor this
+maxUploadSize = 10000
+maxMessageSize = 10000
+enableXsrfProtection = true
+enableCORS = false
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#FF4B4B"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F0F2F6"
+textColor = "#262730"

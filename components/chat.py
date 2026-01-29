@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.llm_helper import get_ai_response
+from utils.llm_helper import get_ai_response, generate_chat_prompt, LLM_PROVIDERS
 
 def render():
     st.header("Chat with your Data")
@@ -11,19 +11,58 @@ def render():
 
     df = st.session_state['data']
 
-    # API Key Configuration (Reuse or ask again, for simplicity asking again or checking session)
-    # Better to have global config but I'll stick to local for simplicity in this artifact
-    api_key = st.sidebar.text_input("API Key for Chat", type="password")
-    provider = st.sidebar.radio("Provider", ["anthropic", "google"])
+    # API Key Configuration in sidebar
+    with st.sidebar:
+        st.subheader("Chat Configuration")
+        provider_names = {k: v['name'] for k, v in LLM_PROVIDERS.items()}
+        provider_display = st.radio("Provider", list(provider_names.values()), key="chat_provider")
+        provider_code = [k for k, v in provider_names.items() if v == provider_display][0]
 
+        api_key = st.text_input("API Key for Chat", type="password", key="chat_api_key")
+
+        available_models = LLM_PROVIDERS[provider_code]['models']
+        selected_model = st.selectbox(
+            "Model",
+            available_models,
+            index=0,
+            key="chat_model"
+        )
+
+        if st.button("Clear Chat History"):
+            st.session_state.messages = []
+            st.rerun()
+
+    # Initialize chat history
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    # Display chat messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    if prompt := st.chat_input("Ask a question about your data (e.g., 'What is the trend in sales?')"):
+    # Example prompts
+    if not st.session_state.messages:
+        st.info("Try asking questions like:")
+        example_prompts = [
+            "What are the main trends in this data?",
+            "Show me the correlation between different columns",
+            "What are the outliers in this dataset?",
+            "Summarize the key statistics",
+            "How can I clean this data?"
+        ]
+        cols = st.columns(2)
+        for i, prompt in enumerate(example_prompts):
+            with cols[i % 2]:
+                if st.button(prompt, key=f"example_{i}"):
+                    st.session_state.pending_prompt = prompt
+                    st.rerun()
+
+    # Handle pending prompt from example buttons
+    pending_prompt = st.session_state.pop('pending_prompt', None)
+
+    # Chat input
+    if prompt := (pending_prompt or st.chat_input("Ask a question about your data")):
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
@@ -31,22 +70,42 @@ def render():
         with st.chat_message("assistant"):
             if not api_key:
                 st.error("Please enter an API key in the sidebar.")
+                st.session_state.messages.append({"role": "assistant", "content": "Error: Please enter an API key in the sidebar."})
             else:
                 with st.spinner("Thinking..."):
-                    # Context building
-                    data_context = f"Dataset Columns: {df.columns.tolist()}\n"
-                    data_context += f"First 5 rows:\n{df.head().to_markdown()}\n"
-                    data_context += f"Data Types:\n{df.dtypes.to_string()}\n"
+                    # Build data context
+                    data_context = f"""
+Dataset Overview:
+- Rows: {len(df)}
+- Columns: {len(df.columns)}
+- Column Names: {df.columns.tolist()}
 
-                    full_prompt = f"""
-                    You are a data assistant. Here is the context of the dataset:
-                    {data_context}
+Data Types:
+{df.dtypes.to_string()}
 
-                    User Question: {prompt}
+Basic Statistics:
+{df.describe().to_string() if not df.select_dtypes(include=['number']).empty else 'No numeric columns'}
 
-                    Answer the question based on the data provided. If you need to perform complex analysis, describe the steps.
-                    """
+Sample Data (first 5 rows):
+{df.head().to_markdown()}
 
-                    response = get_ai_response(full_prompt, api_key, provider)
+Missing Values:
+{df.isnull().sum().to_string()}
+"""
+
+                    full_prompt = generate_chat_prompt(
+                        data_context,
+                        prompt,
+                        st.session_state.messages[:-1]  # Exclude current message
+                    )
+
+                    response = get_ai_response(
+                        full_prompt,
+                        api_key,
+                        provider_code,
+                        model=selected_model,
+                        max_tokens=4096
+                    )
+
                     st.markdown(response)
                     st.session_state.messages.append({"role": "assistant", "content": response})

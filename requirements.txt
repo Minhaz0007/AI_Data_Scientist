@@ -9,9 +9,13 @@ scikit-learn
 statsmodels
 anthropic
 google-generativeai
+openai
 python-docx
 reportlab
+weasyprint
 openpyxl
+xlrd
 sqlalchemy
 pyyaml
 psycopg2-binary
+tabulate
