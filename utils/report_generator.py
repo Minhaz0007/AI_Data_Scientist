@@ -169,7 +169,7 @@ def generate_html_report(df, insights=None, title="Data Analysis Report"):
         {df.head(10).to_html(classes='table', index=False)}
 
         <h2>Column Information</h2>
-        {pd.DataFrame({{'Column': df.columns, 'Data Type': df.dtypes.values, 'Non-Null Count': df.count().values, 'Null Count': df.isnull().sum().values}}).to_html(classes='table', index=False)}
+        {pd.DataFrame({'Column': df.columns, 'Data Type': df.dtypes.values, 'Non-Null Count': df.count().values, 'Null Count': df.isnull().sum().values}).to_html(classes='table', index=False)}
 
         {missing_html}
 

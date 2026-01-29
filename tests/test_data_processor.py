@@ -50,7 +50,10 @@ class TestDataProcessor(unittest.TestCase):
         # Group by C, mean of A
         # x: (1 + 4 + 1) / 3 = 2
         agg = group_and_aggregate(self.df, 'C', 'A', 'mean')
-        self.assertEqual(agg['x'], 2)
+        # Check that the mean of group 'x' is 2
+        # agg is a DataFrame with columns 'C' and 'A'
+        mean_x = agg[agg['C'] == 'x']['A'].values[0]
+        self.assertEqual(mean_x, 2)
 
     def test_perform_clustering(self):
         # Clustering needs numeric data without NaN

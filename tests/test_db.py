@@ -3,10 +3,12 @@ from unittest.mock import patch, MagicMock
 import os
 import sys
 
-# Mock sqlalchemy and streamlit for testing db.py without dependencies
+# Mock streamlit for testing db.py without UI side effects
 sys.modules['streamlit'] = MagicMock()
-sys.modules['sqlalchemy'] = MagicMock()
-sys.modules['sqlalchemy.create_engine'] = MagicMock()
+
+# Do not mock sqlalchemy globally as it breaks other tests
+# sys.modules['sqlalchemy'] = MagicMock()
+# sys.modules['sqlalchemy.create_engine'] = MagicMock()
 
 from utils.db import init_db, save_project
 
