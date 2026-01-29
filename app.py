@@ -26,6 +26,8 @@ if 'dark_mode' not in st.session_state:
     st.session_state['dark_mode'] = True  # Default to dark mode
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = "Data Ingestion"
+if 'dashboard_charts' not in st.session_state:
+    st.session_state['dashboard_charts'] = []
 
 # AMOLED/XDR Optimized Dark Theme CSS
 def apply_theme():
@@ -49,6 +51,25 @@ def apply_theme():
             --warning: #f59e0b;
             --error: #ef4444;
             --info: #3b82f6;
+        }
+
+        /* Animations */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stApp, [data-testid="stAppViewContainer"] {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* Card Styling */
+        .card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         /* Main backgrounds */
@@ -97,7 +118,7 @@ def apply_theme():
             font-weight: 500 !important;
         }
 
-        /* Sidebar nav buttons - make them subtle */
+        /* Sidebar nav buttons */
         section[data-testid="stSidebar"] .stButton > button {
             background-color: transparent !important;
             color: var(--text-secondary) !important;
@@ -106,35 +127,44 @@ def apply_theme():
             padding: 0.5rem 0.75rem !important;
             font-weight: 400 !important;
             justify-content: flex-start !important;
+            transition: all 0.2s ease;
         }
 
         section[data-testid="stSidebar"] .stButton > button:hover {
             background-color: var(--bg-hover) !important;
             color: var(--text-primary) !important;
-            transform: none !important;
-            box-shadow: none !important;
+            transform: translateX(4px) !important;
         }
 
-        /* Main content primary buttons */
+        /* Main content buttons */
+        [data-testid="stAppViewContainer"] .stButton > button {
+            border-radius: 8px !important;
+            transition: all 0.2s ease !important;
+        }
+
+        [data-testid="stAppViewContainer"] .stButton > button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+        }
+
+        /* Primary buttons */
         [data-testid="stAppViewContainer"] .stButton > button[kind="primary"],
         [data-testid="stAppViewContainer"] .stButton > button[data-testid="baseButton-primary"] {
             background: linear-gradient(135deg, var(--accent), #2563eb) !important;
             color: white !important;
             border: none !important;
             font-weight: 600 !important;
-            border-radius: 8px !important;
         }
 
         [data-testid="stAppViewContainer"] .stButton > button[kind="primary"]:hover {
             box-shadow: 0 4px 15px var(--accent-glow) !important;
         }
 
-        /* Main content secondary/regular buttons */
+        /* Secondary buttons */
         [data-testid="stAppViewContainer"] .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]) {
             background-color: var(--bg-tertiary) !important;
             color: var(--text-primary) !important;
             border: 1px solid var(--border) !important;
-            border-radius: 8px !important;
         }
 
         [data-testid="stAppViewContainer"] .stButton > button:not([kind="primary"]):hover {
@@ -145,68 +175,32 @@ def apply_theme():
         /* Input fields */
         .stTextInput > div > div > input,
         .stNumberInput > div > div > input,
-        .stTextArea > div > div > textarea {
+        .stTextArea > div > div > textarea,
+        .stSelectbox > div > div {
             background-color: var(--bg-tertiary) !important;
             color: var(--text-primary) !important;
             border: 1px solid var(--border) !important;
             border-radius: 8px !important;
+            transition: border-color 0.2s;
         }
 
         .stTextInput > div > div > input:focus,
-        .stTextArea > div > div > textarea:focus {
+        .stTextArea > div > div > textarea:focus,
+        .stSelectbox > div > div:focus-within {
             border-color: var(--accent) !important;
             box-shadow: 0 0 0 2px var(--accent-glow) !important;
         }
 
-        /* Selectbox */
-        .stSelectbox > div > div,
-        [data-baseweb="select"] > div {
-            background-color: var(--bg-tertiary) !important;
-            border-color: var(--border) !important;
-            color: var(--text-primary) !important;
+        /* DataFrame styling */
+        [data-testid="stDataFrame"] {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
         }
 
-        [data-baseweb="popover"] > div {
-            background-color: var(--bg-tertiary) !important;
-            border: 1px solid var(--border) !important;
-        }
-
-        [data-baseweb="menu"] {
-            background-color: var(--bg-tertiary) !important;
-        }
-
-        [data-baseweb="menu"] li {
-            background-color: var(--bg-tertiary) !important;
-        }
-
-        [data-baseweb="menu"] li:hover {
-            background-color: var(--bg-hover) !important;
-        }
-
-        /* Multiselect */
-        .stMultiSelect > div > div {
-            background-color: var(--bg-tertiary) !important;
-            border-color: var(--border) !important;
-        }
-
-        /* DataFrames */
-        .stDataFrame, [data-testid="stDataFrame"] {
-            border-radius: 8px !important;
-        }
-
-        [data-testid="stDataFrame"] > div {
-            background-color: var(--bg-secondary) !important;
-        }
-
-        .stDataFrame th {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-primary) !important;
-        }
-
-        .stDataFrame td {
-            background-color: var(--bg-secondary) !important;
-            color: var(--text-primary) !important;
-            border-color: var(--border) !important;
+        /* Metrics */
+        [data-testid="stMetricValue"] {
+            color: var(--accent-light) !important;
         }
 
         /* Tabs */
@@ -217,66 +211,11 @@ def apply_theme():
 
         .stTabs [data-baseweb="tab"] {
             color: var(--text-secondary) !important;
-            background-color: transparent !important;
         }
 
         .stTabs [aria-selected="true"] {
             color: var(--accent-light) !important;
             border-bottom: 2px solid var(--accent) !important;
-        }
-
-        /* Expanders */
-        details {
-            background-color: var(--bg-tertiary) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: 8px !important;
-        }
-
-        details summary {
-            color: var(--text-primary) !important;
-        }
-
-        /* Metrics */
-        [data-testid="stMetricValue"] {
-            color: var(--accent-light) !important;
-            font-weight: 700 !important;
-        }
-
-        [data-testid="stMetricLabel"] {
-            color: var(--text-secondary) !important;
-        }
-
-        /* Alerts */
-        [data-testid="stAlert"] {
-            background-color: var(--bg-tertiary) !important;
-            border-radius: 8px !important;
-            border: 1px solid var(--border) !important;
-        }
-
-        /* File uploader */
-        [data-testid="stFileUploader"] section {
-            background-color: var(--bg-tertiary) !important;
-            border: 2px dashed var(--border) !important;
-            border-radius: 12px !important;
-        }
-
-        [data-testid="stFileUploader"] section:hover {
-            border-color: var(--accent) !important;
-        }
-
-        [data-testid="stFileUploader"] button {
-            background-color: var(--accent) !important;
-            color: white !important;
-        }
-
-        /* Slider */
-        .stSlider > div > div > div {
-            background-color: var(--accent) !important;
-        }
-
-        /* Checkbox & Radio */
-        .stCheckbox label, .stRadio label {
-            color: var(--text-primary) !important;
         }
 
         /* Scrollbar */
@@ -298,22 +237,15 @@ def apply_theme():
             background: var(--text-muted);
         }
 
-        /* Divider */
         .divider {
             height: 1px;
             background: var(--border);
             margin: 1rem 0;
         }
 
-        /* Page description */
         .page-desc {
             color: var(--text-secondary) !important;
             font-size: 0.95rem;
-        }
-
-        /* Info box fix */
-        .stAlert > div {
-            color: var(--text-primary) !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -325,6 +257,15 @@ def apply_theme():
             --accent: #2563eb;
             --accent-light: #3b82f6;
             --accent-glow: rgba(37, 99, 235, 0.15);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stApp {
+            animation: fadeIn 0.4s ease-out;
         }
 
         .nav-header {
@@ -356,6 +297,10 @@ def apply_theme():
         section[data-testid="stSidebar"] .stButton > button:hover {
             background-color: #f0f0f0 !important;
             color: #333 !important;
+        }
+
+        [data-testid="stAppViewContainer"] .stButton > button:hover {
+            transform: translateY(-2px);
         }
 
         [data-testid="stMetricValue"] {
@@ -402,21 +347,21 @@ if not check_password():
 
 # Import components
 from components import ingestion, profiling, cleaning, transformation, analysis, visualization, insights, chat, reporting
-from components import modeling, timeseries, feature_engineering, advanced_analysis
+from components import modeling, timeseries, feature_engineering, advanced_analysis, dashboard
 from utils.db import init_db, save_project, load_projects, load_project_details
 
 # Navigation structure
 PAGES = {
     "Data Pipeline": ["Data Ingestion", "Data Profiling", "Data Cleaning", "Transformation"],
     "Data Science": ["Feature Engineering", "Predictive Modeling", "Time Series", "Advanced Analysis"],
-    "Analytics & AI": ["Analysis", "Visualization", "AI Insights", "Chat"],
+    "Analytics & AI": ["Analysis", "Visualization", "Dashboard", "AI Insights", "Chat"],
     "Output": ["Reporting"]
 }
 
 PAGE_ICONS = {
     "Data Ingestion": "📤", "Data Profiling": "📊", "Data Cleaning": "🧹", "Transformation": "🔄",
     "Feature Engineering": "⚙️", "Predictive Modeling": "🎯", "Time Series": "📈", "Advanced Analysis": "🧠",
-    "Analysis": "📉", "Visualization": "📊", "AI Insights": "💡", "Chat": "💬",
+    "Analysis": "📉", "Visualization": "📊", "Dashboard": "🖥️", "AI Insights": "💡", "Chat": "💬",
     "Reporting": "📄"
 }
 
@@ -431,6 +376,7 @@ PAGE_DESC = {
     "Advanced Analysis": "Perform PCA, t-SNE visualization, anomaly detection, and text analysis",
     "Analysis": "Run statistical tests, perform clustering, and detect outliers",
     "Visualization": "Create custom interactive charts and get AI-suggested visualizations",
+    "Dashboard": "Pin your favorite visualizations to a custom dashboard",
     "AI Insights": "Get comprehensive AI-powered analysis and recommendations",
     "Chat": "Ask natural language questions about your data",
     "Reporting": "Generate and export professional reports in multiple formats"
@@ -526,6 +472,8 @@ elif page == "Analysis":
     analysis.render()
 elif page == "Visualization":
     visualization.render()
+elif page == "Dashboard":
+    dashboard.render()
 elif page == "AI Insights":
     insights.render()
 elif page == "Chat":
