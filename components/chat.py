@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 from utils.llm_helper import get_ai_response, generate_chat_prompt, LLM_PROVIDERS
 
 def render():
@@ -15,10 +16,10 @@ def render():
     with st.sidebar:
         st.subheader("Chat Configuration")
         provider_names = {k: v['name'] for k, v in LLM_PROVIDERS.items()}
-        provider_display = st.radio("Provider", list(provider_names.values()), key="chat_provider")
+        provider_display = st.radio("Provider", list(provider_names.values()), key="chat_provider", index=list(provider_names.keys()).index('google') if 'google' in provider_names else 0)
         provider_code = [k for k, v in provider_names.items() if v == provider_display][0]
 
-        api_key = st.text_input("API Key for Chat", type="password", key="chat_api_key")
+        api_key = st.text_input("API Key (Optional if set in Env)", type="password", key="chat_api_key", help="Leave blank to use environment variable.")
 
         available_models = LLM_PROVIDERS[provider_code]['models']
         selected_model = st.selectbox(
@@ -68,9 +69,15 @@ def render():
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            if not api_key:
-                st.error("Please enter an API key in the sidebar.")
-                st.session_state.messages.append({"role": "assistant", "content": "Error: Please enter an API key in the sidebar."})
+            # Check for API key in input or environment (handled by get_ai_response, but we check here to show UI error if both missing)
+            has_env_key = False
+            if provider_code == 'google' and os.environ.get('GOOGLE_API_KEY'): has_env_key = True
+            elif provider_code == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'): has_env_key = True
+            elif provider_code == 'openai' and os.environ.get('OPENAI_API_KEY'): has_env_key = True
+
+            if not api_key and not has_env_key:
+                st.error("Please enter an API key in the sidebar or set it in the environment.")
+                st.session_state.messages.append({"role": "assistant", "content": "Error: Please enter an API key."})
             else:
                 with st.spinner("Thinking..."):
                     # Build data context

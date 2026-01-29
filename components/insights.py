@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 from utils.llm_helper import get_ai_response, generate_insights_prompt, LLM_PROVIDERS
 from utils.data_processor import profile_data
 
@@ -20,7 +21,7 @@ def render():
         # Get provider code from display name
         provider_code = [k for k, v in provider_names.items() if v == provider_display][0]
 
-        api_key = st.text_input("Enter API Key", type="password")
+        api_key = st.text_input("Enter API Key (Optional)", type="password", help="Leave blank if set in environment variables.")
 
         # Model selection
         available_models = LLM_PROVIDERS[provider_code]['models']
@@ -35,7 +36,12 @@ def render():
         max_tokens = st.slider("Max Response Tokens", 1024, 8192, 4096)
 
     if st.button("Generate Comprehensive Insights"):
-        if not api_key:
+        has_env_key = False
+        if provider_code == 'google' and os.environ.get('GOOGLE_API_KEY'): has_env_key = True
+        elif provider_code == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'): has_env_key = True
+        elif provider_code == 'openai' and os.environ.get('OPENAI_API_KEY'): has_env_key = True
+
+        if not api_key and not has_env_key:
             st.error("Please enter an API key.")
         else:
             with st.spinner("Analyzing data and generating insights..."):

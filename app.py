@@ -23,7 +23,7 @@ if 'data' not in st.session_state:
 if 'file_meta' not in st.session_state:
     st.session_state['file_meta'] = None
 if 'dark_mode' not in st.session_state:
-    st.session_state['dark_mode'] = True  # Default to dark mode
+    st.session_state['dark_mode'] = False  # Default to light mode
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = "Data Ingestion"
 if 'dashboard_charts' not in st.session_state:
@@ -38,15 +38,15 @@ def apply_theme():
         :root {
             --bg-primary: #000000;
             --bg-secondary: #0a0a0a;
-            --bg-tertiary: #141414;
+            --bg-tertiary: #262730;
             --bg-hover: #1f1f1f;
-            --text-primary: #f5f5f5;
+            --text-primary: #ffffff;
             --text-secondary: #a0a0a0;
             --text-muted: #666666;
             --accent: #3b82f6;
             --accent-light: #60a5fa;
             --accent-glow: rgba(59, 130, 246, 0.25);
-            --border: #2a2a2a;
+            --border: #4a4a4a;
             --success: #22c55e;
             --warning: #f59e0b;
             --error: #ef4444;
@@ -176,12 +176,23 @@ def apply_theme():
         .stTextInput > div > div > input,
         .stNumberInput > div > div > input,
         .stTextArea > div > div > textarea,
-        .stSelectbox > div > div {
+        .stSelectbox > div > div,
+        .stMultiSelect > div > div > div {
             background-color: var(--bg-tertiary) !important;
             color: var(--text-primary) !important;
             border: 1px solid var(--border) !important;
             border-radius: 8px !important;
             transition: border-color 0.2s;
+        }
+
+        .stSelectbox > div > div > div[data-baseweb="select"] > div {
+             color: var(--text-primary) !important;
+        }
+
+        /* Dropdown options */
+        ul[data-baseweb="menu"] li {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
         }
 
         .stTextInput > div > div > input:focus,
@@ -331,7 +342,7 @@ def check_password():
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("## 🔬 AI Data Scientist")
+        st.markdown("## 🔬 Data Engine")
         st.markdown("Enter password to continue")
         entered_password = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Enter password...")
         if st.button("Login", type="primary", use_container_width=True):
@@ -387,7 +398,7 @@ with st.sidebar:
     # Header with theme toggle
     col1, col2 = st.columns([4, 1])
     with col1:
-        st.markdown("## 🔬 AI Data Scientist")
+        st.markdown("## 🔬 Data Engine")
     with col2:
         theme_btn = "☀️" if st.session_state.get('dark_mode') else "🌙"
         if st.button(theme_btn, help="Toggle theme"):
