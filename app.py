@@ -35,32 +35,24 @@ def apply_theme():
         /* AMOLED Dark Theme - Pure black for OLED/XDR displays */
         :root {
             --bg-primary: #000000;
-            --bg-secondary: #0d0d0d;
-            --bg-tertiary: #1a1a1a;
-            --bg-card: #0d0d0d;
-            --text-primary: #ffffff;
-            --text-secondary: #888888;
-            --text-muted: #555555;
-            --accent: #00d4aa;
-            --accent-hover: #00f5c4;
-            --accent-glow: rgba(0, 212, 170, 0.3);
-            --border: #222222;
-            --success: #00c853;
-            --warning: #ffd600;
-            --error: #ff5252;
-            --info: #2196f3;
+            --bg-secondary: #0a0a0a;
+            --bg-tertiary: #141414;
+            --bg-hover: #1f1f1f;
+            --text-primary: #f5f5f5;
+            --text-secondary: #a0a0a0;
+            --text-muted: #666666;
+            --accent: #3b82f6;
+            --accent-light: #60a5fa;
+            --accent-glow: rgba(59, 130, 246, 0.25);
+            --border: #2a2a2a;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --info: #3b82f6;
         }
 
-        /* Main app background */
-        .stApp {
-            background-color: var(--bg-primary) !important;
-        }
-
-        [data-testid="stAppViewContainer"] {
-            background-color: var(--bg-primary) !important;
-        }
-
-        [data-testid="stHeader"] {
+        /* Main backgrounds */
+        .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             background-color: var(--bg-primary) !important;
         }
 
@@ -74,8 +66,8 @@ def apply_theme():
             background-color: var(--bg-secondary) !important;
         }
 
-        /* All text */
-        .stMarkdown, p, span, label, li, div {
+        /* Text */
+        .stMarkdown, p, span, label, li {
             color: var(--text-primary) !important;
         }
 
@@ -83,53 +75,71 @@ def apply_theme():
             color: var(--text-primary) !important;
         }
 
-        /* Sidebar navigation */
+        /* Navigation headers */
         .nav-header {
-            color: var(--accent) !important;
+            color: var(--text-muted) !important;
             font-size: 0.7rem !important;
-            font-weight: 700 !important;
+            font-weight: 600 !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.15em !important;
-            padding: 1rem 0 0.5rem 0 !important;
+            letter-spacing: 0.1em !important;
+            padding: 0.75rem 0 0.25rem 0.5rem !important;
             margin: 0 !important;
         }
 
-        .nav-item {
-            display: block;
-            padding: 0.6rem 0.8rem;
-            margin: 0.15rem 0;
-            border-radius: 8px;
-            color: var(--text-secondary) !important;
-            text-decoration: none;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
-        }
-
-        .nav-item:hover {
-            background-color: var(--bg-tertiary);
-            color: var(--text-primary) !important;
-        }
-
+        /* Active nav item */
         .nav-item-active {
-            background: linear-gradient(135deg, var(--accent-glow), transparent) !important;
+            background-color: var(--accent-glow) !important;
             border-left: 3px solid var(--accent) !important;
-            color: var(--accent) !important;
-            font-weight: 600;
+            color: var(--accent-light) !important;
+            padding: 0.5rem 0.75rem !important;
+            margin: 0.1rem 0 !important;
+            border-radius: 0 6px 6px 0 !important;
+            font-weight: 500 !important;
         }
 
-        /* Buttons */
-        .stButton > button {
-            background: linear-gradient(135deg, var(--accent), #00b894) !important;
-            color: #000 !important;
+        /* Sidebar nav buttons - make them subtle */
+        section[data-testid="stSidebar"] .stButton > button {
+            background-color: transparent !important;
+            color: var(--text-secondary) !important;
+            border: none !important;
+            text-align: left !important;
+            padding: 0.5rem 0.75rem !important;
+            font-weight: 400 !important;
+            justify-content: flex-start !important;
+        }
+
+        section[data-testid="stSidebar"] .stButton > button:hover {
+            background-color: var(--bg-hover) !important;
+            color: var(--text-primary) !important;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
+        /* Main content primary buttons */
+        [data-testid="stAppViewContainer"] .stButton > button[kind="primary"],
+        [data-testid="stAppViewContainer"] .stButton > button[data-testid="baseButton-primary"] {
+            background: linear-gradient(135deg, var(--accent), #2563eb) !important;
+            color: white !important;
             border: none !important;
             font-weight: 600 !important;
             border-radius: 8px !important;
-            transition: all 0.3s ease !important;
         }
 
-        .stButton > button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 20px var(--accent-glow) !important;
+        [data-testid="stAppViewContainer"] .stButton > button[kind="primary"]:hover {
+            box-shadow: 0 4px 15px var(--accent-glow) !important;
+        }
+
+        /* Main content secondary/regular buttons */
+        [data-testid="stAppViewContainer"] .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]) {
+            background-color: var(--bg-tertiary) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 8px !important;
+        }
+
+        [data-testid="stAppViewContainer"] .stButton > button:not([kind="primary"]):hover {
+            background-color: var(--bg-hover) !important;
+            border-color: var(--accent) !important;
         }
 
         /* Input fields */
@@ -145,21 +155,32 @@ def apply_theme():
         .stTextInput > div > div > input:focus,
         .stTextArea > div > div > textarea:focus {
             border-color: var(--accent) !important;
-            box-shadow: 0 0 0 1px var(--accent) !important;
+            box-shadow: 0 0 0 2px var(--accent-glow) !important;
         }
 
         /* Selectbox */
-        .stSelectbox > div > div {
+        .stSelectbox > div > div,
+        [data-baseweb="select"] > div {
             background-color: var(--bg-tertiary) !important;
             border-color: var(--border) !important;
+            color: var(--text-primary) !important;
         }
 
-        [data-baseweb="select"] {
+        [data-baseweb="popover"] > div {
+            background-color: var(--bg-tertiary) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        [data-baseweb="menu"] {
             background-color: var(--bg-tertiary) !important;
         }
 
-        [data-baseweb="popover"] {
+        [data-baseweb="menu"] li {
             background-color: var(--bg-tertiary) !important;
+        }
+
+        [data-baseweb="menu"] li:hover {
+            background-color: var(--bg-hover) !important;
         }
 
         /* Multiselect */
@@ -169,24 +190,17 @@ def apply_theme():
         }
 
         /* DataFrames */
-        .stDataFrame {
+        .stDataFrame, [data-testid="stDataFrame"] {
             border-radius: 8px !important;
-            overflow: hidden !important;
         }
 
         [data-testid="stDataFrame"] > div {
             background-color: var(--bg-secondary) !important;
         }
 
-        /* Tables */
-        .stDataFrame table {
-            background-color: var(--bg-secondary) !important;
-        }
-
         .stDataFrame th {
             background-color: var(--bg-tertiary) !important;
             color: var(--text-primary) !important;
-            font-weight: 600 !important;
         }
 
         .stDataFrame td {
@@ -198,44 +212,33 @@ def apply_theme():
         /* Tabs */
         .stTabs [data-baseweb="tab-list"] {
             background-color: transparent !important;
-            gap: 0 !important;
+            border-bottom: 1px solid var(--border) !important;
         }
 
         .stTabs [data-baseweb="tab"] {
-            background-color: transparent !important;
             color: var(--text-secondary) !important;
-            border-radius: 8px 8px 0 0 !important;
-            padding: 0.5rem 1rem !important;
+            background-color: transparent !important;
         }
 
         .stTabs [aria-selected="true"] {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--accent) !important;
-        }
-
-        .stTabs [data-baseweb="tab-panel"] {
-            background-color: var(--bg-tertiary) !important;
-            border-radius: 0 8px 8px 8px !important;
-            padding: 1rem !important;
+            color: var(--accent-light) !important;
+            border-bottom: 2px solid var(--accent) !important;
         }
 
         /* Expanders */
-        .streamlit-expanderHeader {
+        details {
             background-color: var(--bg-tertiary) !important;
+            border: 1px solid var(--border) !important;
             border-radius: 8px !important;
-            color: var(--text-primary) !important;
         }
 
-        .streamlit-expanderContent {
-            background-color: var(--bg-card) !important;
-            border: 1px solid var(--border) !important;
-            border-top: none !important;
-            border-radius: 0 0 8px 8px !important;
+        details summary {
+            color: var(--text-primary) !important;
         }
 
         /* Metrics */
         [data-testid="stMetricValue"] {
-            color: var(--accent) !important;
+            color: var(--accent-light) !important;
             font-weight: 700 !important;
         }
 
@@ -243,41 +246,14 @@ def apply_theme():
             color: var(--text-secondary) !important;
         }
 
-        [data-testid="stMetricDelta"] svg {
-            fill: var(--accent) !important;
-        }
-
         /* Alerts */
-        .stAlert {
+        [data-testid="stAlert"] {
             background-color: var(--bg-tertiary) !important;
             border-radius: 8px !important;
-        }
-
-        [data-testid="stAlertContentInfo"] {
-            background-color: rgba(33, 150, 243, 0.1) !important;
-            border-left: 4px solid var(--info) !important;
-        }
-
-        [data-testid="stAlertContentSuccess"] {
-            background-color: rgba(0, 200, 83, 0.1) !important;
-            border-left: 4px solid var(--success) !important;
-        }
-
-        [data-testid="stAlertContentWarning"] {
-            background-color: rgba(255, 214, 0, 0.1) !important;
-            border-left: 4px solid var(--warning) !important;
-        }
-
-        [data-testid="stAlertContentError"] {
-            background-color: rgba(255, 82, 82, 0.1) !important;
-            border-left: 4px solid var(--error) !important;
+            border: 1px solid var(--border) !important;
         }
 
         /* File uploader */
-        [data-testid="stFileUploader"] {
-            background-color: var(--bg-secondary) !important;
-        }
-
         [data-testid="stFileUploader"] section {
             background-color: var(--bg-tertiary) !important;
             border: 2px dashed var(--border) !important;
@@ -288,53 +264,19 @@ def apply_theme():
             border-color: var(--accent) !important;
         }
 
-        /* Radio buttons */
-        .stRadio > div {
-            gap: 0.25rem !important;
-        }
-
-        .stRadio label {
-            background-color: transparent !important;
-            padding: 0.5rem 0.75rem !important;
-            border-radius: 6px !important;
-            transition: all 0.2s ease !important;
-        }
-
-        .stRadio label:hover {
-            background-color: var(--bg-tertiary) !important;
-        }
-
-        /* Checkbox */
-        .stCheckbox {
-            color: var(--text-primary) !important;
+        [data-testid="stFileUploader"] button {
+            background-color: var(--accent) !important;
+            color: white !important;
         }
 
         /* Slider */
-        .stSlider [data-baseweb="slider"] {
-            background-color: var(--bg-tertiary) !important;
-        }
-
-        .stSlider [data-testid="stTickBar"] {
-            background: linear-gradient(90deg, var(--accent), #00b894) !important;
-        }
-
-        /* Progress */
-        .stProgress > div > div {
+        .stSlider > div > div > div {
             background-color: var(--accent) !important;
         }
 
-        /* Spinner */
-        .stSpinner > div {
-            border-top-color: var(--accent) !important;
-        }
-
-        /* Plotly charts */
-        .js-plotly-plot .plotly .modebar {
-            background-color: var(--bg-secondary) !important;
-        }
-
-        .js-plotly-plot .plotly .modebar-btn path {
-            fill: var(--text-secondary) !important;
+        /* Checkbox & Radio */
+        .stCheckbox label, .stRadio label {
+            color: var(--text-primary) !important;
         }
 
         /* Scrollbar */
@@ -356,26 +298,22 @@ def apply_theme():
             background: var(--text-muted);
         }
 
-        /* Custom divider */
+        /* Divider */
         .divider {
             height: 1px;
-            background: linear-gradient(90deg, transparent, var(--border), transparent);
+            background: var(--border);
             margin: 1rem 0;
-        }
-
-        /* Data status card */
-        .data-status {
-            background: linear-gradient(135deg, var(--bg-tertiary), var(--bg-card));
-            border-radius: 12px;
-            padding: 1rem;
-            border: 1px solid var(--border);
         }
 
         /* Page description */
         .page-desc {
             color: var(--text-secondary) !important;
             font-size: 0.95rem;
-            margin-bottom: 1rem;
+        }
+
+        /* Info box fix */
+        .stAlert > div {
+            color: var(--text-primary) !important;
         }
         </style>
         """, unsafe_allow_html=True)
@@ -384,39 +322,40 @@ def apply_theme():
         st.markdown("""
         <style>
         :root {
-            --accent: #FF4B4B;
-            --accent-hover: #ff6b6b;
-            --accent-glow: rgba(255, 75, 75, 0.2);
+            --accent: #2563eb;
+            --accent-light: #3b82f6;
+            --accent-glow: rgba(37, 99, 235, 0.15);
         }
 
         .nav-header {
             color: #666 !important;
             font-size: 0.7rem !important;
-            font-weight: 700 !important;
+            font-weight: 600 !important;
             text-transform: uppercase !important;
-            letter-spacing: 0.15em !important;
-            padding: 1rem 0 0.5rem 0 !important;
-        }
-
-        .nav-item {
-            display: block;
-            padding: 0.6rem 0.8rem;
-            margin: 0.15rem 0;
-            border-radius: 8px;
-            color: #666 !important;
-            font-size: 0.9rem;
+            letter-spacing: 0.1em !important;
+            padding: 0.75rem 0 0.25rem 0.5rem !important;
         }
 
         .nav-item-active {
-            background: linear-gradient(135deg, var(--accent-glow), transparent) !important;
+            background-color: var(--accent-glow) !important;
             border-left: 3px solid var(--accent) !important;
             color: var(--accent) !important;
-            font-weight: 600;
+            padding: 0.5rem 0.75rem !important;
+            border-radius: 0 6px 6px 0 !important;
+            font-weight: 500 !important;
         }
 
-        .stButton > button {
-            border-radius: 8px !important;
-            font-weight: 600 !important;
+        section[data-testid="stSidebar"] .stButton > button {
+            background-color: transparent !important;
+            color: #555 !important;
+            border: none !important;
+            text-align: left !important;
+            justify-content: flex-start !important;
+        }
+
+        section[data-testid="stSidebar"] .stButton > button:hover {
+            background-color: #f0f0f0 !important;
+            color: #333 !important;
         }
 
         [data-testid="stMetricValue"] {
@@ -425,15 +364,8 @@ def apply_theme():
 
         .divider {
             height: 1px;
-            background: linear-gradient(90deg, transparent, #e0e0e0, transparent);
+            background: #e0e0e0;
             margin: 1rem 0;
-        }
-
-        .data-status {
-            background: #f8f9fa;
-            border-radius: 12px;
-            padding: 1rem;
-            border: 1px solid #e0e0e0;
         }
         </style>
         """, unsafe_allow_html=True)
