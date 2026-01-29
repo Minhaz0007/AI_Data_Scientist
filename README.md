@@ -1,16 +1,27 @@
-# AI Data Analyst Application
+# AI Data Scientist
 
-A comprehensive AI-powered data analysis application built with Streamlit. Upload your data, get automated insights, and generate professional reports.
+A comprehensive AI-powered **Data Science & Machine Learning** platform built with Streamlit. From data ingestion to predictive modeling, time series forecasting, and automated insights - everything you need for end-to-end data science workflows.
+
+## What's New in v2.0
+
+- **Predictive Modeling**: Regression & Classification with 10+ algorithms
+- **AutoML**: Automatic model selection and comparison
+- **Time Series Analysis**: Decomposition, stationarity tests, and forecasting (ARIMA, Exponential Smoothing)
+- **Feature Engineering**: Polynomial features, interactions, datetime extraction, binning, and selection
+- **Advanced Analysis**: PCA, t-SNE, anomaly detection, and text analysis
+- **Enhanced UI**: Organized navigation with Data Pipeline, Data Science, Analytics, and Output sections
 
 ## Features
 
-### Data Ingestion
+### Data Pipeline
+
+#### Data Ingestion
 - **Multi-format support:** CSV, Excel (.xlsx, .xls, .xlsm), JSON
 - **SQL Database connection:** Connect to any SQL database via connection string
 - **No file size limits:** Configured for large file uploads
 - **Drag-and-drop interface**
 
-### Data Profiling
+#### Data Profiling
 - Automatic data type detection
 - Missing value analysis with visualization
 - Duplicate row detection
@@ -18,20 +29,75 @@ A comprehensive AI-powered data analysis application built with Streamlit. Uploa
 - Statistical summaries (mean, median, std, skewness, kurtosis)
 - Column distribution visualization
 
-### Data Cleaning
+#### Data Cleaning
 - Multiple imputation strategies (mean, median, mode, constant, drop)
 - Duplicate removal with confirmation
 - Column name standardization (snake_case)
 - Before/after comparison
 
-### Data Transformation
+#### Data Transformation
 - **Filtering:** Multiple conditions (equals, contains, between, etc.)
 - **Aggregation:** Group by with multiple aggregation methods
 - **Pivot/Unpivot:** Reshape data easily
 - **Calculated Columns:** Create new columns with Python expressions
 - **Merge Datasets:** Join multiple datasets with various join types
 
-### Analysis Engine
+### Data Science
+
+#### Feature Engineering
+- **Polynomial Features:** Create polynomial terms up to degree 4
+- **Interaction Features:** Multiplication and division interactions
+- **DateTime Features:** Extract year, month, day, weekday, quarter, hour, weekend flag
+- **Binning:** Quantile or uniform binning for numeric columns
+- **Feature Selection:** Mutual information, F-score, and Recursive Feature Elimination
+
+#### Predictive Modeling
+- **Regression Models:**
+  - Linear Regression, Ridge, Lasso, ElasticNet
+  - Decision Tree, Random Forest, Gradient Boosting, AdaBoost
+  - Support Vector Regression (SVR), K-Nearest Neighbors
+- **Classification Models:**
+  - Logistic Regression
+  - Decision Tree, Random Forest, Gradient Boosting, AdaBoost
+  - Support Vector Machine (SVM), K-Nearest Neighbors
+  - Naive Bayes
+- **AutoML:** Automatic comparison of all models with best selection
+- **Model Evaluation:** R², RMSE, MAE, Accuracy, Precision, Recall, F1, AUC-ROC
+- **Cross-Validation:** 5-fold CV with mean and standard deviation
+- **Feature Importance:** Visual ranking of feature contributions
+- **Predictions:** Make predictions on new data points
+
+#### Time Series Analysis
+- **Time Series Visualization:** Trend lines, moving averages
+- **Stationarity Testing:** Augmented Dickey-Fuller test
+- **Autocorrelation Analysis:** ACF and PACF plots
+- **Seasonal Decomposition:** Trend, seasonal, and residual components
+- **Forecasting:**
+  - ARIMA models
+  - Exponential Smoothing
+  - Auto-selection of best model
+- **Validation Metrics:** MAPE, AIC
+
+#### Advanced Analysis
+- **PCA (Principal Component Analysis):**
+  - Explained variance visualization
+  - 2D and 3D scatter plots
+  - Component loadings heatmap
+- **t-SNE Visualization:**
+  - Non-linear dimensionality reduction
+  - Cluster discovery
+- **Anomaly Detection:**
+  - Isolation Forest
+  - Local Outlier Factor (LOF)
+  - Visual identification and removal
+- **Text Analysis:**
+  - Word frequency analysis
+  - Basic sentiment analysis
+  - Text feature extraction (word count, character count, etc.)
+
+### Analytics & AI
+
+#### Analysis Engine
 - **K-Means Clustering:** Segment your data with visualization
 - **Outlier Detection:** IQR and Z-Score methods with treatment options
 - **Statistical Tests:**
@@ -40,7 +106,7 @@ A comprehensive AI-powered data analysis application built with Streamlit. Uploa
   - Pearson correlation test
   - Chi-square test for independence
 
-### Visualization
+#### Visualization
 - **AI-suggested charts** based on data patterns
 - **Custom chart builder** with 6 chart types:
   - Scatter plots (with color encoding)
@@ -51,22 +117,24 @@ A comprehensive AI-powered data analysis application built with Streamlit. Uploa
   - Heatmaps
 - Interactive Plotly visualizations
 
-### AI-Powered Insights
+#### AI-Powered Insights
 - **Multiple LLM providers:**
-  - Anthropic Claude (Claude 3.5 Sonnet, Opus, Haiku)
+  - Anthropic Claude (Claude Sonnet 4, Claude 3.5 Sonnet, Opus, Haiku)
   - Google Gemini (1.5 Pro, 1.5 Flash)
   - OpenAI GPT (GPT-4o, GPT-4 Turbo)
 - **Model selection** for each provider
 - **Configurable token limits**
 - Comprehensive data analysis with actionable recommendations
 
-### Chat Interface
+#### Chat Interface
 - Natural language queries about your data
 - Conversation history
 - Example prompts to get started
 - Multi-provider support
 
-### Report Generation
+### Output
+
+#### Report Generation
 - **Multiple formats:**
   - HTML (professional styling, print-ready)
   - PDF (via ReportLab)
@@ -75,7 +143,7 @@ A comprehensive AI-powered data analysis application built with Streamlit. Uploa
 - Includes AI insights when available
 - Executive summary with key metrics
 
-### Project Management
+#### Project Management
 - Save/load analysis projects to Neon PostgreSQL
 - Session state management
 - Password protection for deployed apps
@@ -135,6 +203,10 @@ ai-data-analyst/
 │   ├── profiling.py        # Data profiling
 │   ├── cleaning.py         # Data cleaning
 │   ├── transformation.py   # Data transformation
+│   ├── feature_engineering.py  # Feature engineering (NEW)
+│   ├── modeling.py         # Predictive modeling (NEW)
+│   ├── timeseries.py       # Time series analysis (NEW)
+│   ├── advanced_analysis.py # PCA, t-SNE, anomaly detection (NEW)
 │   ├── analysis.py         # Statistical analysis
 │   ├── visualization.py    # Chart generation
 │   ├── insights.py         # AI insights
@@ -143,6 +215,7 @@ ai-data-analyst/
 ├── utils/                  # Helper modules
 │   ├── data_loader.py     # File loading
 │   ├── data_processor.py  # Data operations
+│   ├── ml_engine.py       # ML algorithms (NEW)
 │   ├── llm_helper.py      # LLM integration
 │   ├── report_generator.py # Report generation
 │   └── db.py              # Database operations
@@ -155,11 +228,23 @@ ai-data-analyst/
 
 - **Frontend:** Streamlit
 - **Data Processing:** Pandas, NumPy, SciPy
-- **Machine Learning:** Scikit-learn
+- **Machine Learning:** Scikit-learn, Statsmodels
 - **Visualization:** Plotly, Matplotlib, Seaborn
 - **LLM Integration:** Anthropic, Google GenAI, OpenAI
 - **Database:** PostgreSQL (Neon)
 - **Report Generation:** ReportLab (PDF), python-docx (Word)
+
+## Machine Learning Capabilities
+
+| Task | Algorithms Available |
+|------|---------------------|
+| **Regression** | Linear, Ridge, Lasso, ElasticNet, Decision Tree, Random Forest, Gradient Boosting, AdaBoost, SVR, KNN |
+| **Classification** | Logistic Regression, Decision Tree, Random Forest, Gradient Boosting, AdaBoost, SVM, KNN, Naive Bayes |
+| **Clustering** | K-Means |
+| **Dimensionality Reduction** | PCA, t-SNE |
+| **Anomaly Detection** | Isolation Forest, Local Outlier Factor |
+| **Time Series** | ARIMA, Exponential Smoothing |
+| **Feature Selection** | Mutual Information, F-Score, RFE |
 
 ## API Key Setup
 
