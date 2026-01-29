@@ -55,16 +55,33 @@ if 'file_meta' not in st.session_state:
 
 # Sidebar Navigation
 st.sidebar.title(config['app_name'])
+
+# Organized navigation with sections
+st.sidebar.markdown("### Data Pipeline")
+data_pages = ["Data Ingestion", "Data Profiling", "Data Cleaning", "Transformation"]
+
+st.sidebar.markdown("### Data Science")
+ds_pages = ["Feature Engineering", "Predictive Modeling", "Time Series", "Advanced Analysis"]
+
+st.sidebar.markdown("### Analytics & AI")
+analytics_pages = ["Analysis", "Visualization", "AI Insights", "Chat"]
+
+st.sidebar.markdown("### Output")
+output_pages = ["Reporting"]
+
+all_pages = data_pages + ds_pages + analytics_pages + output_pages
+
 page = st.sidebar.radio(
     "Navigate",
-    ["Data Ingestion", "Data Profiling", "Data Cleaning", "Transformation",
-     "Analysis", "Visualization", "AI Insights", "Chat", "Reporting"]
+    all_pages,
+    label_visibility="collapsed"
 )
 
 st.title(page)
 
 # Import components
 from components import ingestion, profiling, cleaning, transformation, analysis, visualization, insights, chat, reporting
+from components import modeling, timeseries, feature_engineering, advanced_analysis
 from utils.db import init_db, save_project, load_projects, load_project_details
 
 # Database & Project Management Sidebar
@@ -123,6 +140,14 @@ elif page == "Data Cleaning":
     cleaning.render()
 elif page == "Transformation":
     transformation.render()
+elif page == "Feature Engineering":
+    feature_engineering.render()
+elif page == "Predictive Modeling":
+    modeling.render()
+elif page == "Time Series":
+    timeseries.render()
+elif page == "Advanced Analysis":
+    advanced_analysis.render()
 elif page == "Analysis":
     analysis.render()
 elif page == "Visualization":
