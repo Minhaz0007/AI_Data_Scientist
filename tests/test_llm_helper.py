@@ -11,11 +11,11 @@ class TestLLMHelper(unittest.TestCase):
         self.assertIn("DATA SUMMARY:", prompt)
         self.assertIn("KEY ANALYSIS RESULTS:", prompt)
 
-    @patch('utils.llm_helper.anthropic')
-    def test_get_ai_response_anthropic(self, mock_anthropic):
+    @patch('anthropic.Anthropic')
+    def test_get_ai_response_anthropic(self, mock_anthropic_class):
         # Mock the client and response
         mock_client = MagicMock()
-        mock_anthropic.Anthropic.return_value = mock_client
+        mock_anthropic_class.return_value = mock_client
 
         mock_message = MagicMock()
         mock_message.content = [MagicMock(text="Insights generated.")]
@@ -24,15 +24,16 @@ class TestLLMHelper(unittest.TestCase):
         response = get_ai_response("prompt", "fake_key", "anthropic")
         self.assertEqual(response, "Insights generated.")
 
-    @patch('utils.llm_helper.genai')
-    def test_get_ai_response_google(self, mock_genai):
+    @patch('google.generativeai.GenerativeModel')
+    @patch('google.generativeai.configure')
+    def test_get_ai_response_google(self, mock_configure, mock_genai_model):
         # Mock the model and response
-        mock_model = MagicMock()
-        mock_genai.GenerativeModel.return_value = mock_model
+        mock_model_instance = MagicMock()
+        mock_genai_model.return_value = mock_model_instance
 
         mock_response = MagicMock()
         mock_response.text = "Gemini insights."
-        mock_model.generate_content.return_value = mock_response
+        mock_model_instance.generate_content.return_value = mock_response
 
         response = get_ai_response("prompt", "fake_key", "google")
         self.assertEqual(response, "Gemini insights.")
