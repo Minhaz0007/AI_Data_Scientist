@@ -12,16 +12,12 @@ def suggest_charts(df):
 
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-    date_cols = df.select_dtypes(include=['datetime64']).columns.tolist()
 
     # Correlation Heatmap
     if len(numeric_cols) > 1:
         corr = df[numeric_cols].corr()
         fig = px.imshow(corr, title="Correlation Heatmap")
         suggestions['Correlation Heatmap'] = fig
-
-    # Scatter Plots for top correlated pairs? Too expensive to check all.
-    # Just generic suggestions.
 
     # Univariate Distribution
     if numeric_cols:
@@ -33,13 +29,24 @@ def suggest_charts(df):
     if categorical_cols and numeric_cols:
         cat = categorical_cols[0]
         num = numeric_cols[0]
-        # Aggregate for bar chart to avoid overcrowding
         if df[cat].nunique() < 20:
             agg_df = df.groupby(cat)[num].mean().reset_index()
             fig = px.bar(agg_df, x=cat, y=num, title=f"Average {num} by {cat}")
             suggestions[f"Bar: {num} by {cat}"] = fig
 
     return suggestions
+
+def add_to_dashboard(fig, title, chart_type):
+    """Add the chart to the dashboard session state."""
+    if 'dashboard_charts' not in st.session_state:
+        st.session_state['dashboard_charts'] = []
+
+    st.session_state['dashboard_charts'].append({
+        'figure': fig,
+        'title': title,
+        'type': chart_type
+    })
+    st.success(f"Added '{title}' to Dashboard!")
 
 def render():
     st.header("Visualization Generator")
@@ -50,14 +57,19 @@ def render():
 
     df = st.session_state['data']
 
+    # Initialize dashboard charts list if needed
+    if 'dashboard_charts' not in st.session_state:
+        st.session_state['dashboard_charts'] = []
+
     # Auto-suggestions
-    st.subheader("AI-Suggested Visualizations")
-    if st.checkbox("Show Suggestions"):
+    with st.expander("AI-Suggested Visualizations", expanded=False):
         suggestions = suggest_charts(df)
         if suggestions:
             for name, fig in suggestions.items():
                 st.write(f"**{name}**")
                 st.plotly_chart(fig, use_container_width=True)
+                if st.button(f"Add to Dashboard", key=f"sugg_{name}"):
+                    add_to_dashboard(fig, name, "AI Suggestion")
         else:
             st.info("Not enough data pattern for suggestions.")
 
@@ -66,74 +78,159 @@ def render():
     # Custom Builder
     st.subheader("Custom Visualization Builder")
 
-    chart_type = st.selectbox("Select Chart Type", ["Scatter", "Line", "Bar", "Histogram", "Box", "Heatmap"])
+    chart_types = [
+        "Scatter", "Line", "Bar", "Histogram", "Box", "Heatmap",
+        "Pie", "Donut", "Sunburst", "Treemap", "Funnel", "Radar", "Area", "Violin"
+    ]
+
+    chart_type = st.selectbox("Select Chart Type", chart_types)
 
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     all_cols = df.columns.tolist()
+    cat_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+
+    fig = None
+    title = ""
 
     try:
+        col1, col2 = st.columns(2)
+
         if chart_type == "Scatter":
-            x_col = st.selectbox("X Axis", numeric_cols)
-            y_col = st.selectbox("Y Axis", numeric_cols, index=1 if len(numeric_cols) > 1 else 0)
+            with col1: x_col = st.selectbox("X Axis", numeric_cols)
+            with col2: y_col = st.selectbox("Y Axis", numeric_cols, index=1 if len(numeric_cols) > 1 else 0)
             color_col = st.selectbox("Color (Optional)", ["None"] + all_cols)
+            size_col = st.selectbox("Size (Optional)", ["None"] + numeric_cols)
 
             if st.button("Generate Scatter Plot"):
                 color = None if color_col == "None" else color_col
-                fig = px.scatter(df, x=x_col, y=y_col, color=color, title=f"{y_col} vs {x_col}")
-                st.plotly_chart(fig, use_container_width=True)
+                size = None if size_col == "None" else size_col
+                title = f"{y_col} vs {x_col}"
+                fig = px.scatter(df, x=x_col, y=y_col, color=color, size=size, title=title)
 
         elif chart_type == "Line":
-            x_col = st.selectbox("X Axis (Time/Sequence)", all_cols)
-            y_col = st.selectbox("Y Axis", numeric_cols)
+            with col1: x_col = st.selectbox("X Axis (Time/Sequence)", all_cols)
+            with col2: y_col = st.selectbox("Y Axis", numeric_cols)
+            color_col = st.selectbox("Color (Optional)", ["None"] + cat_cols)
 
             if st.button("Generate Line Plot"):
-                fig = px.line(df, x=x_col, y=y_col, title=f"{y_col} over {x_col}")
-                st.plotly_chart(fig, use_container_width=True)
+                color = None if color_col == "None" else color_col
+                title = f"{y_col} over {x_col}"
+                fig = px.line(df, x=x_col, y=y_col, color=color, title=title)
 
         elif chart_type == "Bar":
-            x_col = st.selectbox("X Axis (Categorical)", all_cols)
-            y_col = st.selectbox("Y Axis (Numerical)", numeric_cols)
-            agg_func = st.selectbox("Aggregation", ["None", "Mean", "Sum", "Count"])
+            with col1: x_col = st.selectbox("X Axis (Categorical)", all_cols)
+            with col2: y_col = st.selectbox("Y Axis (Numerical)", numeric_cols)
+            color_col = st.selectbox("Color (Optional)", ["None"] + cat_cols)
+            barmode = st.selectbox("Bar Mode", ["group", "stack", "overlay", "relative"])
 
             if st.button("Generate Bar Chart"):
-                if agg_func != "None":
-                    if agg_func == "Mean":
-                        plot_df = df.groupby(x_col)[y_col].mean().reset_index()
-                    elif agg_func == "Sum":
-                        plot_df = df.groupby(x_col)[y_col].sum().reset_index()
-                    elif agg_func == "Count":
-                        plot_df = df.groupby(x_col)[y_col].count().reset_index()
-                    fig = px.bar(plot_df, x=x_col, y=y_col, title=f"{agg_func} of {y_col} by {x_col}")
-                else:
-                    fig = px.bar(df, x=x_col, y=y_col, title=f"{y_col} by {x_col}")
-                st.plotly_chart(fig, use_container_width=True)
+                color = None if color_col == "None" else color_col
+                title = f"{y_col} by {x_col}"
+                fig = px.bar(df, x=x_col, y=y_col, color=color, barmode=barmode, title=title)
 
         elif chart_type == "Histogram":
             x_col = st.selectbox("Column", numeric_cols)
             bins = st.slider("Number of Bins", 5, 100, 20)
+            color_col = st.selectbox("Color (Optional)", ["None"] + cat_cols)
 
             if st.button("Generate Histogram"):
-                fig = px.histogram(df, x=x_col, nbins=bins, title=f"Distribution of {x_col}")
-                st.plotly_chart(fig, use_container_width=True)
+                color = None if color_col == "None" else color_col
+                title = f"Distribution of {x_col}"
+                fig = px.histogram(df, x=x_col, nbins=bins, color=color, title=title)
 
         elif chart_type == "Box":
-            y_col = st.selectbox("Numerical Column", numeric_cols)
-            x_col = st.selectbox("Categorical Column (Optional)", ["None"] + all_cols)
+            with col1: y_col = st.selectbox("Numerical Column", numeric_cols)
+            with col2: x_col = st.selectbox("Categorical Column (Optional)", ["None"] + all_cols)
+            color_col = st.selectbox("Color (Optional)", ["None"] + cat_cols)
 
             if st.button("Generate Box Plot"):
                 x = None if x_col == "None" else x_col
-                fig = px.box(df, y=y_col, x=x, title=f"Box Plot of {y_col}")
-                st.plotly_chart(fig, use_container_width=True)
+                color = None if color_col == "None" else color_col
+                title = f"Box Plot of {y_col}"
+                fig = px.box(df, y=y_col, x=x, color=color, title=title)
 
         elif chart_type == "Heatmap":
             if len(numeric_cols) > 1:
                 cols = st.multiselect("Select Columns", numeric_cols, default=numeric_cols)
                 if st.button("Generate Heatmap"):
                     corr = df[cols].corr()
-                    fig = px.imshow(corr, text_auto=True, title="Correlation Matrix")
-                    st.plotly_chart(fig, use_container_width=True)
+                    title = "Correlation Matrix"
+                    fig = px.imshow(corr, text_auto=True, title=title)
             else:
                 st.warning("Need at least 2 numerical columns.")
+
+        elif chart_type in ["Pie", "Donut"]:
+            with col1: names = st.selectbox("Labels (Categorical)", cat_cols if cat_cols else all_cols)
+            with col2: values = st.selectbox("Values (Numerical)", numeric_cols)
+
+            if st.button(f"Generate {chart_type} Chart"):
+                title = f"{values} distribution by {names}"
+                if chart_type == "Pie":
+                    fig = px.pie(df, names=names, values=values, title=title)
+                else:
+                    fig = px.pie(df, names=names, values=values, title=title, hole=0.4)
+
+        elif chart_type == "Sunburst":
+            path_cols = st.multiselect("Hierarchy Path (Select in order)", cat_cols if cat_cols else all_cols)
+            values = st.selectbox("Values", numeric_cols)
+
+            if path_cols and st.button("Generate Sunburst"):
+                title = f"Sunburst of {values}"
+                fig = px.sunburst(df, path=path_cols, values=values, title=title)
+
+        elif chart_type == "Treemap":
+            path_cols = st.multiselect("Hierarchy Path", cat_cols if cat_cols else all_cols)
+            values = st.selectbox("Values", numeric_cols)
+
+            if path_cols and st.button("Generate Treemap"):
+                title = f"Treemap of {values}"
+                fig = px.treemap(df, path=path_cols, values=values, title=title)
+
+        elif chart_type == "Funnel":
+            with col1: x_col = st.selectbox("Values", numeric_cols)
+            with col2: y_col = st.selectbox("Stages", cat_cols if cat_cols else all_cols)
+
+            if st.button("Generate Funnel"):
+                title = f"Funnel of {x_col} by {y_col}"
+                fig = px.funnel(df, x=x_col, y=y_col, title=title)
+
+        elif chart_type == "Radar":
+            with col1: r_col = st.selectbox("Radius (Numerical)", numeric_cols)
+            with col2: theta_col = st.selectbox("Angle (Categorical)", cat_cols if cat_cols else all_cols)
+            color_col = st.selectbox("Color (Group)", ["None"] + cat_cols)
+
+            if st.button("Generate Radar Chart"):
+                color = None if color_col == "None" else color_col
+                title = f"Radar Chart: {r_col} by {theta_col}"
+                fig = px.line_polar(df, r=r_col, theta=theta_col, color=color, line_close=True, title=title)
+
+        elif chart_type == "Area":
+            with col1: x_col = st.selectbox("X Axis", all_cols)
+            with col2: y_col = st.selectbox("Y Axis", numeric_cols)
+            color_col = st.selectbox("Color (Stack)", ["None"] + cat_cols)
+
+            if st.button("Generate Area Chart"):
+                color = None if color_col == "None" else color_col
+                title = f"Area Chart: {y_col} over {x_col}"
+                fig = px.area(df, x=x_col, y=y_col, color=color, title=title)
+
+        elif chart_type == "Violin":
+            with col1: y_col = st.selectbox("Numerical Data", numeric_cols)
+            with col2: x_col = st.selectbox("Category (Optional)", ["None"] + cat_cols)
+            color_col = st.selectbox("Color (Optional)", ["None"] + cat_cols)
+
+            if st.button("Generate Violin Plot"):
+                x = None if x_col == "None" else x_col
+                color = None if color_col == "None" else color_col
+                title = f"Violin Plot of {y_col}"
+                fig = px.violin(df, y=y_col, x=x, color=color, box=True, points="all", title=title)
+
+        # Display and Save
+        if fig:
+            st.plotly_chart(fig, use_container_width=True)
+
+            if st.button("📌 Add to Dashboard", type="primary"):
+                add_to_dashboard(fig, title, chart_type)
 
     except Exception as e:
         st.error(f"Error generating chart: {e}")
