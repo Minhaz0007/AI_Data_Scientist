@@ -283,7 +283,11 @@ def render_auto_clean(df):
 
                     # Preview cleaned data
                     st.markdown("**Preview of cleaned data:**")
-                    st.dataframe(df_clean.head(10), use_container_width=True)
+                    try:
+                        st.dataframe(df_clean.head(10), use_container_width=True)
+                    except pa.ArrowInvalid:
+                        st.warning("Displaying data as string due to mixed types.")
+                        st.dataframe(df_clean.head(10).astype(str), use_container_width=True)
 
                     # Confirm button
                     if st.button("Confirm and Apply Changes", key="confirm_auto_clean"):
