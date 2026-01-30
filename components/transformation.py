@@ -35,6 +35,34 @@ def render():
     with tab5:
         render_merge(df)
 
+    # Suggestions
+    st.markdown("---")
+    st.subheader("💡 Automated Suggestions")
+    from utils.data_processor import get_transformation_suggestions
+    suggestions = get_transformation_suggestions(df)
+
+    if suggestions:
+        for i, sugg in enumerate(suggestions):
+            with st.expander(f"Suggestion: {sugg['type']} for {sugg['column']}"):
+                st.write(f"**Reason:** {sugg['reason']}")
+                if st.button(f"Apply {sugg['type']}", key=f"apply_sugg_{i}"):
+                    if sugg['action'] == 'log':
+                         import numpy as np
+                         # Handle zeros/negative
+                         min_val = df[sugg['column']].min()
+                         shift = 0
+                         if min_val <= 0:
+                             shift = abs(min_val) + 1
+                         st.session_state['data'][sugg['column']] = np.log(df[sugg['column']] + shift)
+                         st.success(f"Applied Log Transform (shift={shift})")
+                         st.rerun()
+                    elif sugg['action'] == 'to_datetime':
+                        st.session_state['data'][sugg['column']] = pd.to_datetime(df[sugg['column']], errors='coerce')
+                        st.success("Converted to DateTime")
+                        st.rerun()
+    else:
+        st.info("No transformation suggestions at this time.")
+
 def render_filter(df):
     st.subheader("Filter Data")
 

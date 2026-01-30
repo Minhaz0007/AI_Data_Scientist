@@ -33,6 +33,7 @@ weasyprint>=60.0
 openpyxl>=3.1.0
 xlrd>=2.0.1
 sqlalchemy>=2.0.0
+requests>=2.31.0
 
 # Configuration & Utilities
 pyyaml>=6.0

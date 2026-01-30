@@ -12,27 +12,53 @@ def suggest_charts(df):
 
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    datetime_cols = []
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            datetime_cols.append(col)
 
-    # Correlation Heatmap
+    # 1. Correlation Heatmap
     if len(numeric_cols) > 1:
         corr = df[numeric_cols].corr()
-        fig = px.imshow(corr, title="Correlation Heatmap")
+        fig = px.imshow(corr, title="Correlation Heatmap", text_auto=True, color_continuous_scale='RdBu_r')
         suggestions['Correlation Heatmap'] = fig
 
-    # Univariate Distribution
+    # 2. Pairplot (Scatter Matrix) for top 3 numeric
+    if len(numeric_cols) >= 3:
+        fig = px.scatter_matrix(df, dimensions=numeric_cols[:3], title="Scatter Matrix (Top 3 Numeric)")
+        suggestions['Scatter Matrix'] = fig
+
+    # 3. Time Series (if datetime exists)
+    if datetime_cols and numeric_cols:
+        date_col = datetime_cols[0]
+        val_col = numeric_cols[0]
+        # Aggregate by date if needed
+        df_agg = df.groupby(date_col)[val_col].mean().reset_index()
+        fig = px.line(df_agg, x=date_col, y=val_col, title=f"Trend of {val_col} over Time")
+        suggestions[f"Trend: {val_col}"] = fig
+
+    # 4. Distribution of Top Numeric
     if numeric_cols:
         col = numeric_cols[0]
-        fig = px.histogram(df, x=col, title=f"Distribution of {col}")
-        suggestions[f"Distribution of {col}"] = fig
+        fig = px.histogram(df, x=col, title=f"Distribution of {col}", marginal="box")
+        suggestions[f"Dist: {col}"] = fig
 
-    # Bar Chart
+    # 5. Bar Chart (Categorical vs Numeric)
     if categorical_cols and numeric_cols:
         cat = categorical_cols[0]
         num = numeric_cols[0]
         if df[cat].nunique() < 20:
-            agg_df = df.groupby(cat)[num].mean().reset_index()
-            fig = px.bar(agg_df, x=cat, y=num, title=f"Average {num} by {cat}")
+            agg_df = df.groupby(cat)[num].mean().reset_index().sort_values(num, ascending=False)
+            fig = px.bar(agg_df, x=cat, y=num, title=f"Avg {num} by {cat}")
             suggestions[f"Bar: {num} by {cat}"] = fig
+
+    # 6. Box Plot (Categorical vs Numeric)
+    if categorical_cols and len(numeric_cols) > 0:
+        cat = categorical_cols[0]
+        num = numeric_cols[0]
+        if df[cat].nunique() < 10:
+             fig = px.box(df, x=cat, y=num, title=f"{num} Distribution by {cat}")
+             suggestions[f"Box: {num} by {cat}"] = fig
 
     return suggestions
 
@@ -65,11 +91,18 @@ def render():
     with st.expander("AI-Suggested Visualizations", expanded=False):
         suggestions = suggest_charts(df)
         if suggestions:
-            for name, fig in suggestions.items():
-                st.write(f"**{name}**")
-                st.plotly_chart(fig, use_container_width=True)
-                if st.button(f"Add to Dashboard", key=f"sugg_{name}"):
-                    add_to_dashboard(fig, name, "AI Suggestion")
+            cols = st.columns(2)
+            for i, (name, fig) in enumerate(suggestions.items()):
+                with cols[i % 2]:
+                    st.write(f"**{name}**")
+                    st.plotly_chart(fig, use_container_width=True)
+                    if st.button(f"Add to Dashboard", key=f"sugg_{name}_{i}"):
+                        add_to_dashboard(fig, name, "AI Suggestion")
+
+            if st.button("✨ Auto-Generate Dashboard (Add All)", type="primary"):
+                 for name, fig in suggestions.items():
+                     add_to_dashboard(fig, name, "AI Suggestion")
+                 st.success(f"Added {len(suggestions)} charts to dashboard!")
         else:
             st.info("Not enough data pattern for suggestions.")
 

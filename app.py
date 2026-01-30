@@ -422,7 +422,7 @@ if not check_password():
 
 # Import components
 from components import ingestion, profiling, cleaning, transformation, analysis, visualization, insights, chat, reporting
-from components import modeling, timeseries, feature_engineering, advanced_analysis, dashboard
+from components import modeling, timeseries, feature_engineering, advanced_analysis, dashboard, workflow
 from utils.db import init_db, save_project, load_projects, load_project_details
 
 # Navigation structure - all features in progression
@@ -430,7 +430,7 @@ PAGES = [
     "Data Ingestion", "Data Profiling", "Data Cleaning", "Transformation",
     "Visualization", "Dashboard", "Reporting",
     "Statistical Analysis", "Feature Engineering", "Predictive Modeling",
-    "Time Series", "Advanced Analysis",
+    "Time Series", "Advanced Analysis", "Workflow Automation",
     "AI Insights", "Chat"
 ]
 
@@ -438,7 +438,7 @@ PAGE_ICONS = {
     "Data Ingestion": "📤", "Data Profiling": "📊", "Data Cleaning": "🧹", "Transformation": "🔄",
     "Feature Engineering": "⚙️", "Predictive Modeling": "🎯", "Time Series": "📈", "Advanced Analysis": "🧠",
     "Statistical Analysis": "📉", "Visualization": "📊", "Dashboard": "🖥️", "AI Insights": "💡", "Chat": "💬",
-    "Reporting": "📄"
+    "Reporting": "📄", "Workflow Automation": "⚡"
 }
 
 PAGE_DESC = {
@@ -455,7 +455,8 @@ PAGE_DESC = {
     "Dashboard": "Pin your favorite visualizations to a custom dashboard",
     "AI Insights": "Get comprehensive AI-powered analysis and recommendations",
     "Chat": "Ask natural language questions about your data",
-    "Reporting": "Generate and export professional reports in multiple formats"
+    "Reporting": "Generate and export professional reports in multiple formats",
+    "Workflow Automation": "Define and execute automated data pipelines"
 }
 
 # Sidebar
@@ -554,3 +555,5 @@ elif page == "Chat":
     chat.render()
 elif page == "Reporting":
     reporting.render()
+elif page == "Workflow Automation":
+    workflow.render()

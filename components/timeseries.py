@@ -256,8 +256,8 @@ def render():
                 "Forecasting Method",
                 options=['auto', 'arima', 'exponential_smoothing'],
                 format_func=lambda x: {
-                    'auto': 'Auto (Best Model)',
-                    'arima': 'ARIMA',
+                    'auto': 'Auto (Best Model + Auto-ARIMA Tuning)',
+                    'arima': 'ARIMA (Standard)',
                     'exponential_smoothing': 'Exponential Smoothing'
                 }.get(x, x)
             )
