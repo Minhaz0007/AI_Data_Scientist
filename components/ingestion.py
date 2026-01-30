@@ -8,7 +8,8 @@ import pandas as pd
 from utils.data_loader import load_data, load_sql, load_url, load_api, load_sample
 import os
 import requests
-from io import StringIO, BytesIO
+from io import StringIO
+from io import BytesIO
 
 # Sample datasets for quick start
 SAMPLE_DATASETS = {
