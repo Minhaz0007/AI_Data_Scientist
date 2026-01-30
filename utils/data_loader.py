@@ -100,7 +100,7 @@ def load_api(url, params=None, headers=None, json_key=None):
 def load_sample(dataset_name):
     """Load a sample dataset."""
     sample_urls = {
-        'titanic': 'https://raw.githubusercontent.com/datasciencedoct/data-science-guide/master/data/titanic.csv',
+        'titanic': 'https://raw.githubusercontent.com/datasciencedojo/datasets/master/titanic.csv',
         'iris': 'https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv',
         'housing': 'https://raw.githubusercontent.com/ageron/handson-ml/master/datasets/housing/housing.csv',
         'wine': 'https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv'
