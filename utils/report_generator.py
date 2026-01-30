@@ -313,7 +313,7 @@ def generate_pdf_report(df, insights=None, title="Data Analysis Report"):
             stats_df = stats_df.iloc[:, :5]
             elements.append(Paragraph("(Showing first 5 numeric columns)", styles['Italic']))
 
-        stats_data = [['Stat'] + stats_df.columns.tolist()] + [[idx] + row.tolist() for idx, row in stats_df.iterrows()]
+        stats_data = [['Stat'] + stats_df.columns.tolist()] + [[idx] + row for idx, row in zip(stats_df.index.tolist(), stats_df.values.tolist())]
 
         stats_table = Table(stats_data)
         stats_table.setStyle(TableStyle([
