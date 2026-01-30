@@ -105,6 +105,62 @@ def apply_quick_transformation(df, transform_type, column, params=None):
     return df_new
 
 
+def render_auto_suggest(df):
+    """Render the auto-suggest transformations tab."""
+    st.subheader("Intelligent Transformation Suggestions")
+    st.markdown("Automatically detect useful transformations for your data.")
+
+    # Analyze opportunities
+    suggestions = analyze_transformation_opportunities(df)
+
+    if not suggestions:
+        st.success("No obvious transformation opportunities detected.")
+        return
+
+    # Group by priority
+    high_priority = [s for s in suggestions if s['priority'] == 'high']
+    medium_priority = [s for s in suggestions if s['priority'] == 'medium']
+    low_priority = [s for s in suggestions if s['priority'] == 'low']
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("High Priority", len(high_priority))
+    col2.metric("Medium Priority", len(medium_priority))
+    col3.metric("Low Priority", len(low_priority))
+
+    st.markdown("---")
+
+    # Display suggestions by priority
+    if high_priority:
+        st.markdown("#### High Priority")
+        for i, s in enumerate(high_priority):
+            with st.expander(f"{s['type'].replace('_', ' ').title()} - {s.get('column', 'Multiple')}"):
+                st.write(f"**Reason:** {s['reason']}")
+                if st.button(f"Apply", key=f"auto_trans_high_{i}"):
+                    if 'column' in s:
+                        df_new = apply_quick_transformation(df, s['type'], s['column'])
+                        st.session_state['data'] = df_new
+                        st.success(f"Applied {s['type']} transformation!")
+                        st.rerun()
+
+    if medium_priority:
+        st.markdown("#### Medium Priority")
+        for i, s in enumerate(medium_priority):
+            with st.expander(f"{s['type'].replace('_', ' ').title()} - {s.get('column', 'Multiple')}"):
+                st.write(f"**Reason:** {s['reason']}")
+                if st.button(f"Apply", key=f"auto_trans_med_{i}"):
+                    if 'column' in s:
+                        df_new = apply_quick_transformation(df, s['type'], s['column'])
+                        st.session_state['data'] = df_new
+                        st.success(f"Applied {s['type']} transformation!")
+                        st.rerun()
+
+    if low_priority:
+        with st.expander(f"Low Priority ({len(low_priority)} suggestions)"):
+            for i, s in enumerate(low_priority):
+                st.markdown(f"**{s['type'].replace('_', ' ').title()}** ({s.get('column', 'Multiple')})")
+                st.caption(s['reason'])
+
+
 def render():
     st.header("Data Transformation")
 
