@@ -406,13 +406,15 @@ def check_password():
     with col2:
         st.markdown("## 🔬 Data Engine")
         st.markdown("Enter password to continue")
-        entered_password = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Enter password...")
-        if st.button("Login", type="primary", use_container_width=True):
-            if entered_password == password:
-                st.session_state['authenticated'] = True
-                st.rerun()
-            else:
-                st.error("Incorrect password")
+        with st.form("login_form"):
+            entered_password = st.text_input("Password", type="password", label_visibility="collapsed", placeholder="Enter password...")
+            submitted = st.form_submit_button("Login", type="primary", use_container_width=True)
+            if submitted:
+                if entered_password == password:
+                    st.session_state['authenticated'] = True
+                    st.rerun()
+                else:
+                    st.error("Incorrect password")
     return False
 
 if not check_password():
