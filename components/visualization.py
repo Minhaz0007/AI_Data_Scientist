@@ -252,7 +252,7 @@ def render():
             for i, (name, fig) in enumerate(suggestions.items()):
                 with cols[i % 2]:
                     st.write(f"**{name}**")
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key=f"ai_sugg_chart_{i}")
                     if st.button(f"Add to Dashboard", key=f"sugg_{name}_{i}"):
                         add_to_dashboard(fig, name, "AI Suggestion")
 
@@ -292,7 +292,7 @@ def render():
                 st.caption(f"Reason: {suggestion['reason']}")
                 fig = generate_auto_chart(df, suggestion)
                 if fig:
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key=f"chart_high_{i}")
                     if st.button(f"Add to Dashboard", key=f"auto_high_{i}"):
                         add_to_dashboard(fig, suggestion['title'], suggestion['type'])
 
@@ -304,7 +304,7 @@ def render():
                 st.caption(f"Reason: {suggestion['reason']}")
                 fig = generate_auto_chart(df, suggestion)
                 if fig:
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key=f"chart_med_{i}")
                     if st.button(f"Add to Dashboard", key=f"auto_med_{i}"):
                         add_to_dashboard(fig, suggestion['title'], suggestion['type'])
 
@@ -315,7 +315,7 @@ def render():
                 st.markdown(f"**{suggestion['title']}** - {suggestion['reason']}")
                 fig = generate_auto_chart(df, suggestion)
                 if fig:
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key=f"chart_low_{i}")
                     if st.button(f"Add to Dashboard", key=f"auto_low_{i}"):
                         add_to_dashboard(fig, suggestion['title'], suggestion['type'])
 
@@ -338,22 +338,22 @@ def render_quick_charts(df):
 
             col_a, col_b = st.columns(2)
             with col_a:
-                if st.button("Histogram"):
+                if st.button("Histogram", key="btn_histogram"):
                     fig = px.histogram(df, x=selected_num, title=f'Distribution of {selected_num}', marginal='box')
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key="quick_histogram")
                     st.session_state['last_quick_chart'] = (fig, f'Distribution of {selected_num}', 'Histogram')
 
             with col_b:
-                if st.button("Box Plot"):
+                if st.button("Box Plot", key="btn_boxplot"):
                     fig = px.box(df, y=selected_num, title=f'Box Plot of {selected_num}', points='outliers')
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key="quick_boxplot")
                     st.session_state['last_quick_chart'] = (fig, f'Box Plot of {selected_num}', 'Box')
 
             if len(numeric_cols) > 1:
                 second_num = st.selectbox("Second Numeric Column", [c for c in numeric_cols if c != selected_num], key="quick_num2")
-                if st.button("Scatter Plot"):
+                if st.button("Scatter Plot", key="btn_scatter"):
                     fig = px.scatter(df, x=selected_num, y=second_num, title=f'{second_num} vs {selected_num}', trendline='ols')
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key="quick_scatter")
                     st.session_state['last_quick_chart'] = (fig, f'{second_num} vs {selected_num}', 'Scatter')
 
     with col2:
@@ -364,29 +364,29 @@ def render_quick_charts(df):
 
             col_a, col_b = st.columns(2)
             with col_a:
-                if st.button("Bar Chart"):
+                if st.button("Bar Chart", key="btn_bar"):
                     counts = df[selected_cat].value_counts().head(15)
                     fig = px.bar(x=counts.index, y=counts.values, title=f'Distribution of {selected_cat}')
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key="quick_bar")
                     st.session_state['last_quick_chart'] = (fig, f'Distribution of {selected_cat}', 'Bar')
 
             with col_b:
-                if st.button("Pie Chart"):
+                if st.button("Pie Chart", key="btn_pie"):
                     counts = df[selected_cat].value_counts().head(10)
                     fig = px.pie(values=counts.values, names=counts.index, title=f'Proportion of {selected_cat}')
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key="quick_pie")
                     st.session_state['last_quick_chart'] = (fig, f'Proportion of {selected_cat}', 'Pie')
 
             if numeric_cols:
-                if st.button("Category Comparison (Box)"):
+                if st.button("Category Comparison (Box)", key="btn_cat_box"):
                     fig = px.box(df, x=selected_cat, y=numeric_cols[0], title=f'{numeric_cols[0]} by {selected_cat}')
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, use_container_width=True, key="quick_cat_box")
                     st.session_state['last_quick_chart'] = (fig, f'{numeric_cols[0]} by {selected_cat}', 'Box')
 
     # Add last chart to dashboard
     if 'last_quick_chart' in st.session_state:
         st.markdown("---")
-        if st.button("Add Last Chart to Dashboard", type="primary"):
+        if st.button("Add Last Chart to Dashboard", type="primary", key="btn_add_last"):
             fig, title, chart_type = st.session_state['last_quick_chart']
             add_to_dashboard(fig, title, chart_type)
 
@@ -394,18 +394,18 @@ def render_quick_charts(df):
     st.markdown("---")
     st.markdown("### Bulk Generation")
 
-    if st.button("Generate All Numeric Distributions"):
+    if st.button("Generate All Numeric Distributions", key="btn_all_dist"):
         cols = st.columns(2)
         for i, col in enumerate(numeric_cols[:6]):
             with cols[i % 2]:
                 fig = px.histogram(df, x=col, title=f'Distribution of {col}')
-                st.plotly_chart(fig, use_container_width=True)
+                st.plotly_chart(fig, use_container_width=True, key=f"bulk_dist_{i}")
 
     if len(numeric_cols) > 1:
-        if st.button("Generate Correlation Heatmap"):
+        if st.button("Generate Correlation Heatmap", key="btn_corr_heatmap"):
             corr = df[numeric_cols].corr()
             fig = px.imshow(corr, text_auto='.2f', title='Correlation Matrix', color_continuous_scale='RdBu_r')
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, key="quick_corr_heatmap")
             st.session_state['last_quick_chart'] = (fig, 'Correlation Matrix', 'Heatmap')
 
 
@@ -597,8 +597,8 @@ def render_custom_builder(df):
                 title = last['title']
 
         if fig:
-            st.plotly_chart(fig, use_container_width=True)
-            if st.button("Add to Dashboard", type="primary"):
+            st.plotly_chart(fig, use_container_width=True, key="custom_builder_chart")
+            if st.button("Add to Dashboard", type="primary", key="btn_add_custom_to_dashboard"):
                 add_to_dashboard(fig, title, chart_type)
 
     except Exception as e:
