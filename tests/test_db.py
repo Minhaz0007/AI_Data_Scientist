@@ -4,7 +4,12 @@ import os
 import sys
 
 # Mock streamlit for testing db.py without UI side effects
-sys.modules['streamlit'] = MagicMock()
+mock_st = MagicMock()
+# Make cache_resource a pass-through decorator
+def identity(func):
+    return func
+mock_st.cache_resource = identity
+sys.modules['streamlit'] = mock_st
 
 # Do not mock sqlalchemy globally as it breaks other tests
 # sys.modules['sqlalchemy'] = MagicMock()
