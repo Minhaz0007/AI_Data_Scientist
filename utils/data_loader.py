@@ -1,6 +1,7 @@
 import pandas as pd
 import io
 import sqlalchemy
+import streamlit as st
 
 def _fix_mixed_types(df):
     """Fix columns with mixed types to prevent PyArrow serialization errors."""
@@ -50,6 +51,7 @@ def load_sql(connection_string, query):
     except Exception as e:
         raise ValueError(f"Error loading SQL: {e}")
 
+@st.cache_data
 def load_data(file, file_type):
     """
     Load data from a file based on its type.
