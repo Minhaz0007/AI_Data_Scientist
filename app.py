@@ -229,6 +229,46 @@ def apply_theme():
             border-bottom: 2px solid var(--accent) !important;
         }
 
+        /* File Uploader Dropzone */
+        [data-testid="stFileUploadDropzone"] {
+            background-color: var(--bg-tertiary) !important;
+            border: 2px dashed var(--border) !important;
+            border-radius: 12px !important;
+        }
+
+        [data-testid="stFileUploadDropzone"]:hover {
+            border-color: var(--accent) !important;
+            background-color: var(--bg-hover) !important;
+        }
+
+        [data-testid="stFileUploadDropzone"] * {
+            color: var(--text-primary) !important;
+        }
+
+        [data-testid="stFileUploadDropzone"] span {
+            color: var(--text-primary) !important;
+        }
+
+        [data-testid="stFileUploadDropzone"] small,
+        [data-testid="stFileUploadDropzone"] p {
+            color: var(--text-secondary) !important;
+        }
+
+        [data-testid="stFileUploadDropzone"] svg {
+            stroke: var(--text-secondary) !important;
+        }
+
+        [data-testid="stFileUploadDropzone"] button {
+            background-color: var(--bg-secondary) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important;
+        }
+
+        [data-testid="stFileUploadDropzone"] button:hover {
+            background-color: var(--accent) !important;
+            border-color: var(--accent) !important;
+        }
+
         /* Scrollbar */
         ::-webkit-scrollbar {
             width: 8px;
