@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-import os
-from utils.llm_helper import get_ai_response, generate_chat_prompt, LLM_PROVIDERS
+from utils.llm_helper import get_ai_response, generate_chat_prompt, get_available_provider, LLM_PROVIDERS
 
 def render():
     st.header("Chat with your Data")
@@ -12,22 +11,17 @@ def render():
 
     df = st.session_state['data']
 
-    # API Key Configuration in sidebar
+    # Auto-detect available provider from secrets/environment
+    provider_code, api_key, selected_model = get_available_provider()
+
+    # Show provider status in sidebar
     with st.sidebar:
         st.subheader("Chat Configuration")
-        provider_names = {k: v['name'] for k, v in LLM_PROVIDERS.items()}
-        provider_display = st.radio("Provider", list(provider_names.values()), key="chat_provider", index=list(provider_names.keys()).index('google') if 'google' in provider_names else 0)
-        provider_code = [k for k, v in provider_names.items() if v == provider_display][0]
-
-        api_key = st.text_input("API Key (Optional if set in Env)", type="password", key="chat_api_key", help="Leave blank to use environment variable.")
-
-        available_models = LLM_PROVIDERS[provider_code]['models']
-        selected_model = st.selectbox(
-            "Model",
-            available_models,
-            index=0,
-            key="chat_model"
-        )
+        if provider_code:
+            provider_name = LLM_PROVIDERS[provider_code]['name']
+            st.info(f"Using **{provider_name}**\nModel: **{selected_model}**")
+        else:
+            st.error("No AI provider configured")
 
         if st.button("Clear Chat History"):
             st.session_state.messages = []
@@ -59,6 +53,11 @@ def render():
                     st.session_state.pending_prompt = prompt
                     st.rerun()
 
+    # Check if provider is available before allowing chat
+    if not provider_code:
+        st.error("No AI provider configured. Please add an API key (ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY) to your Streamlit secrets or environment variables.")
+        return
+
     # Handle pending prompt from example buttons
     pending_prompt = st.session_state.pop('pending_prompt', None)
 
@@ -69,19 +68,9 @@ def render():
             st.markdown(prompt)
 
         with st.chat_message("assistant"):
-            # Check for API key in input or environment (handled by get_ai_response, but we check here to show UI error if both missing)
-            has_env_key = False
-            if provider_code == 'google' and os.environ.get('GOOGLE_API_KEY'): has_env_key = True
-            elif provider_code == 'anthropic' and os.environ.get('ANTHROPIC_API_KEY'): has_env_key = True
-            elif provider_code == 'openai' and os.environ.get('OPENAI_API_KEY'): has_env_key = True
-
-            if not api_key and not has_env_key:
-                st.error("Please enter an API key in the sidebar or set it in the environment.")
-                st.session_state.messages.append({"role": "assistant", "content": "Error: Please enter an API key."})
-            else:
-                with st.spinner("Thinking..."):
-                    # Build data context
-                    data_context = f"""
+            with st.spinner("Thinking..."):
+                # Build data context
+                data_context = f"""
 Dataset Overview:
 - Rows: {len(df)}
 - Columns: {len(df.columns)}
@@ -100,19 +89,19 @@ Missing Values:
 {df.isnull().sum().to_string()}
 """
 
-                    full_prompt = generate_chat_prompt(
-                        data_context,
-                        prompt,
-                        st.session_state.messages[:-1]  # Exclude current message
-                    )
+                full_prompt = generate_chat_prompt(
+                    data_context,
+                    prompt,
+                    st.session_state.messages[:-1]  # Exclude current message
+                )
 
-                    response = get_ai_response(
-                        full_prompt,
-                        api_key,
-                        provider_code,
-                        model=selected_model,
-                        max_tokens=4096
-                    )
+                response = get_ai_response(
+                    full_prompt,
+                    api_key,
+                    provider_code,
+                    model=selected_model,
+                    max_tokens=4096
+                )
 
-                    st.markdown(response)
-                    st.session_state.messages.append({"role": "assistant", "content": response})
+                st.markdown(response)
+                st.session_state.messages.append({"role": "assistant", "content": response})

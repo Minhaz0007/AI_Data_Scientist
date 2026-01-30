@@ -1,9 +1,11 @@
 import os
+import streamlit as st
 
-# LLM Provider configurations
+# LLM Provider configurations with environment variable names
 LLM_PROVIDERS = {
     'anthropic': {
         'name': 'Anthropic (Claude)',
+        'env_var': 'ANTHROPIC_API_KEY',
         'models': [
             'claude-sonnet-4-20250514',
             'claude-3-5-sonnet-20241022',
@@ -14,17 +16,18 @@ LLM_PROVIDERS = {
     },
     'google': {
         'name': 'Google (Gemini)',
+        'env_var': 'GOOGLE_API_KEY',
         'models': [
-            'gemini-3-pro',
-            'gemini-3-flash',
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
             'gemini-1.5-pro',
-            'gemini-1.5-flash',
-            'gemini-pro'
+            'gemini-1.5-flash'
         ],
-        'default_model': 'gemini-3-pro'
+        'default_model': 'gemini-2.0-flash'
     },
     'openai': {
         'name': 'OpenAI (GPT)',
+        'env_var': 'OPENAI_API_KEY',
         'models': [
             'gpt-4o',
             'gpt-4o-mini',
@@ -34,6 +37,67 @@ LLM_PROVIDERS = {
         'default_model': 'gpt-4o'
     }
 }
+
+# Provider priority order for auto-detection
+PROVIDER_PRIORITY = ['anthropic', 'openai', 'google']
+
+
+def get_available_provider():
+    """
+    Auto-detect available LLM provider based on configured API keys.
+    Checks environment variables and Streamlit secrets.
+
+    Returns:
+        tuple: (provider_code, api_key, model) or (None, None, None) if no provider available
+    """
+    for provider in PROVIDER_PRIORITY:
+        config = LLM_PROVIDERS[provider]
+        env_var = config['env_var']
+
+        # Check Streamlit secrets first, then environment variables
+        api_key = None
+        try:
+            if hasattr(st, 'secrets') and env_var in st.secrets:
+                api_key = st.secrets[env_var]
+        except Exception:
+            pass
+
+        if not api_key:
+            api_key = os.environ.get(env_var)
+
+        if api_key:
+            return provider, api_key, config['default_model']
+
+    return None, None, None
+
+
+def get_all_available_providers():
+    """
+    Get all available LLM providers based on configured API keys.
+
+    Returns:
+        list: List of tuples (provider_code, api_key, default_model) for available providers
+    """
+    available = []
+    for provider in PROVIDER_PRIORITY:
+        config = LLM_PROVIDERS[provider]
+        env_var = config['env_var']
+
+        # Check Streamlit secrets first, then environment variables
+        api_key = None
+        try:
+            if hasattr(st, 'secrets') and env_var in st.secrets:
+                api_key = st.secrets[env_var]
+        except Exception:
+            pass
+
+        if not api_key:
+            api_key = os.environ.get(env_var)
+
+        if api_key:
+            available.append((provider, api_key, config['default_model']))
+
+    return available
 
 def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_tokens=4096):
     """
