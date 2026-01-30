@@ -78,6 +78,9 @@ def render():
     # Custom Builder
     st.subheader("Custom Visualization Builder")
 
+    with st.expander("Data Preview & Filtering", expanded=False):
+        st.dataframe(df, use_container_width=True)
+
     chart_types = [
         "Scatter", "Line", "Bar", "Histogram", "Box", "Heatmap",
         "Pie", "Donut", "Sunburst", "Treemap", "Funnel", "Radar", "Area", "Violin"

@@ -15,11 +15,13 @@ LLM_PROVIDERS = {
     'google': {
         'name': 'Google (Gemini)',
         'models': [
+            'gemini-3-pro',
+            'gemini-3-flash',
             'gemini-1.5-pro',
             'gemini-1.5-flash',
             'gemini-pro'
         ],
-        'default_model': 'gemini-1.5-pro'
+        'default_model': 'gemini-3-pro'
     },
     'openai': {
         'name': 'OpenAI (GPT)',
@@ -44,8 +46,17 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
         model: Specific model to use (optional, uses provider default if not specified).
         max_tokens: Maximum tokens in the response.
     """
+    # Fallback to environment variables if api_key is not provided
     if not api_key:
-        return "Error: API key is missing."
+        if provider == 'anthropic':
+            api_key = os.environ.get('ANTHROPIC_API_KEY')
+        elif provider == 'google':
+            api_key = os.environ.get('GOOGLE_API_KEY')
+        elif provider == 'openai':
+            api_key = os.environ.get('OPENAI_API_KEY')
+
+    if not api_key:
+        return "Error: API key is missing. Please provide it in the sidebar or set it as an environment variable."
 
     try:
         if provider == 'anthropic':
