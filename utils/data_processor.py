@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import streamlit as st
 from sklearn.cluster import KMeans
+from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from scipy import stats
 
@@ -666,3 +667,267 @@ def one_hot_encode(df, columns, drop_first=False, prefix=None):
         prefix: prefix for new column names (uses original column name if None)
     """
     return pd.get_dummies(df, columns=columns, drop_first=drop_first, prefix=prefix)
+
+
+# ============================================================================
+# ADVANCED PROFILING (QUALITY, ANOMALIES, DRIFT)
+# ============================================================================
+
+def calculate_quality_score(df):
+    """
+    Calculate a data quality score (0-100).
+    Based on missing values, duplicates, and outliers.
+    """
+    if df.empty:
+        return 0, {}
+
+    n_rows = len(df)
+    n_cols = len(df.columns)
+
+    # 1. Missing Values Score
+    total_cells = n_rows * n_cols
+    missing_cells = df.isnull().sum().sum()
+    missing_ratio = missing_cells / total_cells if total_cells > 0 else 0
+    missing_score = max(0, 100 - (missing_ratio * 100))
+
+    # 2. Duplicate Rows Score
+    duplicate_rows = df.duplicated().sum()
+    duplicate_ratio = duplicate_rows / n_rows if n_rows > 0 else 0
+    duplicate_score = max(0, 100 - (duplicate_ratio * 100))
+
+    # 3. Outlier Score (simplified estimate using IQR on sample numeric cols)
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    outlier_ratios = []
+
+    if len(numeric_cols) > 0:
+        # Check max 5 random numeric columns to save time
+        cols_to_check = numeric_cols if len(numeric_cols) <= 5 else np.random.choice(numeric_cols, 5, replace=False)
+
+        for col in cols_to_check:
+            try:
+                Q1 = df[col].quantile(0.25)
+                Q3 = df[col].quantile(0.75)
+                IQR = Q3 - Q1
+                outliers = ((df[col] < (Q1 - 1.5 * IQR)) | (df[col] > (Q3 + 1.5 * IQR))).sum()
+                outlier_ratios.append(outliers / n_rows)
+            except:
+                pass
+
+    avg_outlier_ratio = np.mean(outlier_ratios) if outlier_ratios else 0
+    # Penalize outliers less severely as they might be valid
+    outlier_score = max(0, 100 - (avg_outlier_ratio * 50))
+
+    # Weighted Average
+    # Missing: 40%, Duplicates: 30%, Outliers: 30%
+    final_score = (missing_score * 0.4) + (duplicate_score * 0.3) + (outlier_score * 0.3)
+
+    details = {
+        'missing_score': round(missing_score, 1),
+        'duplicate_score': round(duplicate_score, 1),
+        'outlier_score': round(outlier_score, 1),
+        'missing_ratio': round(missing_ratio * 100, 2),
+        'duplicate_ratio': round(duplicate_ratio * 100, 2),
+        'outlier_ratio_est': round(avg_outlier_ratio * 100, 2)
+    }
+
+    return round(final_score, 1), details
+
+def detect_anomalies(df, contamination=0.05):
+    """
+    Detect anomalies using Isolation Forest on numeric columns.
+    Returns DataFrame with 'is_anomaly' column and anomaly score.
+    """
+    df_result = df.copy()
+    numeric_df = df.select_dtypes(include=[np.number]).dropna()
+
+    if numeric_df.empty or len(numeric_df.columns) < 1:
+        return df_result, 0
+
+    try:
+        iso = IsolationForest(contamination=contamination, random_state=42)
+        # fit_predict returns -1 for outliers, 1 for inliers
+        preds = iso.fit_predict(numeric_df)
+
+        # Initialize with False
+        df_result['is_anomaly'] = False
+        df_result['anomaly_score'] = 0.0
+
+        # Map back to original indices
+        anomaly_indices = numeric_df.index[preds == -1]
+        df_result.loc[anomaly_indices, 'is_anomaly'] = True
+
+        # Get decision function scores (lower is more anomalous)
+        scores = iso.decision_function(numeric_df)
+        df_result.loc[numeric_df.index, 'anomaly_score'] = scores
+
+        n_anomalies = len(anomaly_indices)
+        return df_result, n_anomalies
+
+    except Exception as e:
+        # Fallback if isolation forest fails
+        print(f"Anomaly detection failed: {e}")
+        return df_result, 0
+
+def detect_drift(df, split_ratio=0.5):
+    """
+    Detect data drift by comparing the first half of data vs the second half.
+    Uses KS test for continuous and Chi-square for categorical (simplified).
+    """
+    n = len(df)
+    if n < 50:
+        return {}
+
+    split_idx = int(n * split_ratio)
+    df1 = df.iloc[:split_idx]
+    df2 = df.iloc[split_idx:]
+
+    drift_report = {}
+
+    # Numeric Drift (KS Test)
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    for col in numeric_cols:
+        try:
+            stat, p_value = stats.ks_2samp(df1[col].dropna(), df2[col].dropna())
+            is_drifted = p_value < 0.05
+            drift_report[col] = {
+                'type': 'numeric',
+                'p_value': round(p_value, 4),
+                'drift_detected': is_drifted,
+                'stat': round(stat, 3)
+            }
+        except:
+            pass
+
+    # Categorical Drift (Chi-Square is tricky if categories differ, using simple distribution diff)
+    cat_cols = df.select_dtypes(include=['object', 'category']).columns
+    for col in cat_cols:
+        try:
+            # Compare top 5 categories distribution
+            dist1 = df1[col].value_counts(normalize=True).head(5)
+            dist2 = df2[col].value_counts(normalize=True).head(5)
+
+            # Align
+            all_cats = set(dist1.index) | set(dist2.index)
+            diff_sum = 0
+            for cat in all_cats:
+                p1 = dist1.get(cat, 0)
+                p2 = dist2.get(cat, 0)
+                diff_sum += abs(p1 - p2)
+
+            # Arbitrary threshold: if sum of differences > 0.3, flag drift
+            is_drifted = diff_sum > 0.3
+            drift_report[col] = {
+                'type': 'categorical',
+                'diff_score': round(diff_sum, 3),
+                'drift_detected': is_drifted
+            }
+        except:
+            pass
+
+    return drift_report
+
+# ============================================================================
+# AUTOMATED CLEANING & TRANSFORMATION SUGGESTIONS
+# ============================================================================
+
+def get_cleaning_suggestions(df):
+    """
+    Analyze the dataframe and return a list of cleaning suggestions.
+    """
+    suggestions = []
+
+    # Missing Values
+    missing_cols = df.columns[df.isnull().any()].tolist()
+    for col in missing_cols:
+        missing_pct = df[col].isnull().mean()
+        if missing_pct > 0.5:
+            suggestions.append(f"Drop column '{col}' (>50% missing)")
+        elif pd.api.types.is_numeric_dtype(df[col]):
+            suggestions.append(f"Impute missing values in '{col}' with median")
+        else:
+            suggestions.append(f"Impute missing values in '{col}' with mode")
+
+    # Duplicates
+    if df.duplicated().sum() > 0:
+        suggestions.append(f"Remove {df.duplicated().sum()} duplicate rows")
+
+    # Constant columns
+    for col in df.columns:
+        if df[col].nunique() <= 1:
+            suggestions.append(f"Drop constant column '{col}'")
+
+    return suggestions
+
+def auto_clean(df):
+    """
+    Automatically apply common cleaning operations.
+    Returns cleaned dataframe and a log of actions.
+    """
+    df_clean = df.copy()
+    log = []
+
+    # 1. Drop high missing columns (>50%)
+    cols_to_drop = [col for col in df_clean.columns if df_clean[col].isnull().mean() > 0.5]
+    if cols_to_drop:
+        df_clean = df_clean.drop(columns=cols_to_drop)
+        log.append(f"Dropped columns with >50% missing: {', '.join(cols_to_drop)}")
+
+    # 2. Drop constant columns
+    const_cols = [col for col in df_clean.columns if df_clean[col].nunique() <= 1]
+    if const_cols:
+        df_clean = df_clean.drop(columns=const_cols)
+        log.append(f"Dropped constant columns: {', '.join(const_cols)}")
+
+    # 3. Remove duplicates
+    n_dups = df_clean.duplicated().sum()
+    if n_dups > 0:
+        df_clean = df_clean.drop_duplicates()
+        log.append(f"Removed {n_dups} duplicate rows")
+
+    # 4. Impute remaining missing
+    for col in df_clean.columns:
+        if df_clean[col].isnull().any():
+            if pd.api.types.is_numeric_dtype(df_clean[col]):
+                val = df_clean[col].median()
+                df_clean[col] = df_clean[col].fillna(val)
+                log.append(f"Imputed '{col}' with median ({val})")
+            else:
+                val = df_clean[col].mode()[0]
+                df_clean[col] = df_clean[col].fillna(val)
+                log.append(f"Imputed '{col}' with mode ('{val}')")
+
+    return df_clean, log
+
+def get_transformation_suggestions(df):
+    """
+    Suggest transformations based on data distribution.
+    """
+    suggestions = []
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+
+    for col in numeric_cols:
+        # Check skewness
+        try:
+            skew = df[col].skew()
+            if abs(skew) > 1:
+                suggestions.append({
+                    'column': col,
+                    'type': 'Log Transform',
+                    'reason': f"Highly skewed ({skew:.2f})",
+                    'action': 'log'
+                })
+        except:
+            pass
+
+    # Check for date components
+    # (Simple check if column name contains 'date' or 'time' but isn't datetime yet)
+    for col in df.columns:
+        if df[col].dtype == 'object' and ('date' in col.lower() or 'time' in col.lower()):
+             suggestions.append({
+                'column': col,
+                'type': 'Convert to DateTime',
+                'reason': "Column name suggests date/time",
+                'action': 'to_datetime'
+            })
+
+    return suggestions

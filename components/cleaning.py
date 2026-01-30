@@ -347,6 +347,30 @@ def render():
 
     st.markdown("---")
 
+    # Automated Cleaning
+    st.subheader("Automated Cleaning")
+    from utils.data_processor import get_cleaning_suggestions, auto_clean
+
+    with st.expander("✨ AI / Auto-Cleaning Suggestions", expanded=True):
+        suggestions = get_cleaning_suggestions(df)
+        if suggestions:
+            st.write("Based on your data, we suggest:")
+            for s in suggestions:
+                st.write(f"- {s}")
+
+            if st.button("🚀 Apply Auto-Clean (One-Click)", type="primary"):
+                df_clean, log = auto_clean(df)
+                st.session_state['data'] = df_clean
+                st.success("Auto-clean complete!")
+                with st.expander("View Cleaning Log"):
+                    for l in log:
+                        st.write(f"✓ {l}")
+                st.rerun()
+        else:
+            st.info("Data looks good! No obvious issues found for auto-cleaning.")
+
+    st.markdown("---")
+
     # Show Data Preview
     st.subheader("Cleaned Data Preview")
     st.dataframe(st.session_state['data'].head())

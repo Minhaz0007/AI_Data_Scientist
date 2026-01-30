@@ -625,16 +625,31 @@ class MLEngine:
 
         try:
             if method in ['arima', 'auto']:
-                # Simple ARIMA
-                model = ARIMA(train, order=(1, 1, 1))
-                fitted = model.fit()
+                # Simple ARIMA or Auto-ARIMA
+                if method == 'arima': # Force simple
+                     model = ARIMA(train, order=(1, 1, 1))
+                     fitted = model.fit()
+                else: # Auto (try to optimize)
+                     # Use a smaller subset for grid search if data is large to save time
+                     search_train = train if len(train) < 200 else train[-200:]
+                     fitted, best_order = self.auto_arima_search(search_train)
+                     # Re-fit on full train with best order
+                     if fitted:
+                         model = ARIMA(train, order=best_order)
+                         fitted = model.fit()
+                     else:
+                         model = ARIMA(train, order=(1,1,1))
+                         fitted = model.fit()
 
                 # Forecast
                 forecast = fitted.forecast(steps=periods)
 
                 # Validation metrics
                 val_forecast = fitted.forecast(steps=len(test))
-                mape = np.mean(np.abs((test.values - val_forecast.values) / test.values)) * 100
+                # Handle division by zero
+                with np.errstate(divide='ignore', invalid='ignore'):
+                    mape = np.mean(np.abs((test.values - val_forecast.values) / test.values)) * 100
+                    if np.isinf(mape) or np.isnan(mape): mape = 0
 
                 results['arima'] = {
                     'forecast': forecast,
@@ -780,4 +795,115 @@ class MLEngine:
 
 
 # Singleton instance
+
+    def optimize_hyperparameters(self, X, y, model_name, task='classification', cv=3):
+        """
+        Perform Grid Search for hyperparameter tuning.
+        """
+        from sklearn.model_selection import GridSearchCV
+
+        # Define grids for common models
+        param_grids = {
+            'Random Forest': {
+                'n_estimators': [50, 100, 200],
+                'max_depth': [None, 10, 20],
+                'min_samples_split': [2, 5, 10]
+            },
+            'Logistic Regression': {
+                'C': [0.1, 1.0, 10.0],
+                'solver': ['liblinear', 'lbfgs']
+            },
+             'Linear Regression': {
+                'fit_intercept': [True, False]
+            },
+             'Ridge Regression': {
+                'alpha': [0.1, 1.0, 10.0]
+             },
+             'Lasso Regression': {
+                'alpha': [0.1, 1.0, 10.0]
+             },
+             'Decision Tree': {
+                 'max_depth': [None, 10, 20, 30],
+                 'min_samples_split': [2, 5, 10]
+             },
+             'Gradient Boosting': {
+                 'n_estimators': [50, 100, 200],
+                 'learning_rate': [0.01, 0.1, 0.2],
+                 'max_depth': [3, 5, 7]
+             },
+             'SVM': {
+                 'C': [0.1, 1, 10],
+                 'kernel': ['rbf', 'linear']
+             },
+             'KNN': {
+                 'n_neighbors': [3, 5, 7, 9],
+                 'weights': ['uniform', 'distance']
+             }
+        }
+
+        # Get base model
+        if task == 'regression':
+            base_model = self.get_regression_models().get(model_name)
+        else:
+            base_model = self.get_classification_models().get(model_name)
+
+        if not base_model:
+            return {'error': f"Unknown model: {model_name}"}
+
+        # Get params
+        params = param_grids.get(model_name)
+        if not params:
+             return {'error': f"No hyperparameter grid defined for {model_name}"}
+
+        # Preprocessing
+        X = X.copy()
+        for col in X.columns:
+            if X[col].isnull().any():
+                 X[col] = X[col].fillna(0) # Simple fill for speed
+
+        X_encoded = pd.get_dummies(X, drop_first=True)
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X_encoded)
+
+        if task != 'regression' and not pd.api.types.is_numeric_dtype(y):
+             le = LabelEncoder()
+             y = le.fit_transform(y)
+
+        # Run Grid Search
+        grid = GridSearchCV(base_model, params, cv=cv, scoring='r2' if task == 'regression' else 'accuracy', n_jobs=-1)
+        grid.fit(X_scaled, y)
+
+        return {
+            'best_params': grid.best_params_,
+            'best_score': grid.best_score_,
+            'best_estimator': grid.best_estimator_
+        }
+
+    def auto_arima_search(self, series, max_p=3, max_d=2, max_q=3):
+        """
+        Simple grid search for ARIMA parameters.
+        """
+        best_aic = float('inf')
+        best_order = (1, 1, 1)
+        best_model = None
+
+        import itertools
+        p = range(0, max_p)
+        d = range(0, max_d)
+        q = range(0, max_q)
+
+        pdq = list(itertools.product(p, d, q))
+
+        for param in pdq:
+            try:
+                model = ARIMA(series, order=param)
+                results = model.fit()
+                if results.aic < best_aic:
+                    best_aic = results.aic
+                    best_order = param
+                    best_model = results
+            except:
+                continue
+
+        return best_model, best_order
 ml_engine = MLEngine()

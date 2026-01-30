@@ -2,6 +2,7 @@ import pandas as pd
 import io
 import sqlalchemy
 import streamlit as st
+import requests
 
 def _fix_mixed_types(df):
     """Fix columns with mixed types to prevent PyArrow serialization errors."""
@@ -54,6 +55,68 @@ def load_sql(connection_string, query):
         return _fix_mixed_types(df)
     except Exception as e:
         raise ValueError(f"Error loading SQL: {e}")
+
+def load_url(url, file_type='csv'):
+    """Load data from a direct URL."""
+    try:
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+
+        if file_type == 'csv':
+            return load_csv(io.BytesIO(response.content))
+        elif file_type in ['json']:
+            return load_json(io.BytesIO(response.content))
+        elif file_type in ['excel', 'xlsx', 'xls']:
+            return load_excel(io.BytesIO(response.content))
+        else:
+            raise ValueError(f"Unsupported file type for URL: {file_type}")
+    except Exception as e:
+        raise ValueError(f"Error loading from URL: {e}")
+
+def load_api(url, params=None, headers=None, json_key=None):
+    """Load data from a REST API returning JSON."""
+    try:
+        response = requests.get(url, params=params, headers=headers, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        if json_key:
+            # Navigate nested JSON
+            keys = json_key.split('.')
+            for k in keys:
+                data = data.get(k, data)
+
+        if isinstance(data, list):
+            df = pd.DataFrame(data)
+        elif isinstance(data, dict):
+            df = pd.DataFrame([data])
+        else:
+            raise ValueError("API response is not a list or dictionary")
+
+        return _fix_mixed_types(df)
+    except Exception as e:
+        raise ValueError(f"Error loading from API: {e}")
+
+def load_sample(dataset_name):
+    """Load a sample dataset."""
+    sample_urls = {
+        'titanic': 'https://raw.githubusercontent.com/datasciencedoct/data-science-guide/master/data/titanic.csv',
+        'iris': 'https://raw.githubusercontent.com/mwaskom/seaborn-data/master/iris.csv',
+        'housing': 'https://raw.githubusercontent.com/ageron/handson-ml/master/datasets/housing/housing.csv',
+        'wine': 'https://archive.ics.uci.edu/ml/machine-learning-databases/wine-quality/winequality-red.csv'
+    }
+
+    if dataset_name not in sample_urls:
+        raise ValueError(f"Unknown sample dataset: {dataset_name}")
+
+    try:
+        if dataset_name == 'wine':
+            # Wine is ; separated
+            df = pd.read_csv(sample_urls[dataset_name], sep=';')
+            return _fix_mixed_types(df)
+        return load_url(sample_urls[dataset_name], 'csv')
+    except Exception as e:
+        raise ValueError(f"Error loading sample dataset: {e}")
 
 @st.cache_data
 def load_data(file, file_type):

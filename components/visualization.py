@@ -17,113 +17,53 @@ def analyze_data_for_visualization(df):
 
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
-    datetime_cols = df.select_dtypes(include='datetime').columns.tolist()
+    datetime_cols = []
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            datetime_cols.append(col)
 
-    # 1. Distribution analysis for all numeric columns
-    for col in numeric_cols[:5]:  # Limit to first 5
-        skewness = df[col].skew()
-        if abs(skewness) > 1:
-            suggestions.append({
-                'type': 'histogram',
-                'title': f'Distribution of {col} (Skewed)',
-                'columns': [col],
-                'priority': 'high',
-                'reason': f'Highly skewed distribution (skew={skewness:.2f})'
-            })
-        else:
-            suggestions.append({
-                'type': 'histogram',
-                'title': f'Distribution of {col}',
-                'columns': [col],
-                'priority': 'medium',
-                'reason': 'Normal distribution analysis'
-            })
-
-    # 2. Correlation analysis
+    # 1. Correlation Heatmap
     if len(numeric_cols) > 1:
-        corr_matrix = df[numeric_cols].corr()
-        # Find highly correlated pairs
-        high_corr_pairs = []
-        for i in range(len(corr_matrix.columns)):
-            for j in range(i+1, len(corr_matrix.columns)):
-                if abs(corr_matrix.iloc[i, j]) > 0.7:
-                    high_corr_pairs.append((corr_matrix.columns[i], corr_matrix.columns[j], corr_matrix.iloc[i, j]))
+        corr = df[numeric_cols].corr()
+        fig = px.imshow(corr, title="Correlation Heatmap", text_auto=True, color_continuous_scale='RdBu_r')
+        suggestions['Correlation Heatmap'] = fig
 
-        if high_corr_pairs:
-            suggestions.append({
-                'type': 'heatmap',
-                'title': 'Correlation Matrix',
-                'columns': numeric_cols,
-                'priority': 'high',
-                'reason': f'Found {len(high_corr_pairs)} highly correlated column pairs'
-            })
+    # 2. Pairplot (Scatter Matrix) for top 3 numeric
+    if len(numeric_cols) >= 3:
+        fig = px.scatter_matrix(df, dimensions=numeric_cols[:3], title="Scatter Matrix (Top 3 Numeric)")
+        suggestions['Scatter Matrix'] = fig
 
-            # Add scatter plots for top correlated pairs
-            for col1, col2, corr in high_corr_pairs[:3]:
-                suggestions.append({
-                    'type': 'scatter',
-                    'title': f'{col1} vs {col2} (r={corr:.2f})',
-                    'columns': [col1, col2],
-                    'priority': 'high',
-                    'reason': f'High correlation ({corr:.2f})'
-                })
+    # 3. Time Series (if datetime exists)
+    if datetime_cols and numeric_cols:
+        date_col = datetime_cols[0]
+        val_col = numeric_cols[0]
+        # Aggregate by date if needed
+        df_agg = df.groupby(date_col)[val_col].mean().reset_index()
+        fig = px.line(df_agg, x=date_col, y=val_col, title=f"Trend of {val_col} over Time")
+        suggestions[f"Trend: {val_col}"] = fig
 
-    # 3. Categorical analysis
-    for cat_col in categorical_cols[:3]:
-        n_unique = df[cat_col].nunique()
-        if 2 <= n_unique <= 15:
-            suggestions.append({
-                'type': 'bar',
-                'title': f'Distribution of {cat_col}',
-                'columns': [cat_col],
-                'priority': 'medium',
-                'reason': f'{n_unique} categories - good for bar chart'
-            })
+    # 4. Distribution of Top Numeric
+    if numeric_cols:
+        col = numeric_cols[0]
+        fig = px.histogram(df, x=col, title=f"Distribution of {col}", marginal="box")
+        suggestions[f"Dist: {col}"] = fig
 
-            # Combination with numeric
-            if numeric_cols:
-                suggestions.append({
-                    'type': 'box',
-                    'title': f'{numeric_cols[0]} by {cat_col}',
-                    'columns': [numeric_cols[0], cat_col],
-                    'priority': 'medium',
-                    'reason': 'Compare numeric distribution across categories'
-                })
+    # 5. Bar Chart (Categorical vs Numeric)
+    if categorical_cols and numeric_cols:
+        cat = categorical_cols[0]
+        num = numeric_cols[0]
+        if df[cat].nunique() < 20:
+            agg_df = df.groupby(cat)[num].mean().reset_index().sort_values(num, ascending=False)
+            fig = px.bar(agg_df, x=cat, y=num, title=f"Avg {num} by {cat}")
+            suggestions[f"Bar: {num} by {cat}"] = fig
 
-        elif n_unique <= 8:
-            suggestions.append({
-                'type': 'pie',
-                'title': f'Proportion of {cat_col}',
-                'columns': [cat_col],
-                'priority': 'low',
-                'reason': f'{n_unique} categories - suitable for pie chart'
-            })
-
-    # 4. Time series analysis
-    for dt_col in datetime_cols:
-        if numeric_cols:
-            suggestions.append({
-                'type': 'line',
-                'title': f'{numeric_cols[0]} over Time',
-                'columns': [dt_col, numeric_cols[0]],
-                'priority': 'high',
-                'reason': 'Time series visualization'
-            })
-
-    # 5. Outlier visualization
-    for col in numeric_cols[:3]:
-        Q1 = df[col].quantile(0.25)
-        Q3 = df[col].quantile(0.75)
-        IQR = Q3 - Q1
-        outliers = ((df[col] < Q1 - 1.5*IQR) | (df[col] > Q3 + 1.5*IQR)).sum()
-        if outliers > len(df) * 0.05:
-            suggestions.append({
-                'type': 'box',
-                'title': f'Outlier Analysis: {col}',
-                'columns': [col],
-                'priority': 'high',
-                'reason': f'{outliers} potential outliers ({outliers/len(df)*100:.1f}%)'
-            })
+    # 6. Box Plot (Categorical vs Numeric)
+    if categorical_cols and len(numeric_cols) > 0:
+        cat = categorical_cols[0]
+        num = numeric_cols[0]
+        if df[cat].nunique() < 10:
+             fig = px.box(df, x=cat, y=num, title=f"{num} Distribution by {cat}")
+             suggestions[f"Box: {num} by {cat}"] = fig
 
     return suggestions
 
@@ -201,45 +141,24 @@ def render():
     if 'dashboard_charts' not in st.session_state:
         st.session_state['dashboard_charts'] = []
 
-    # Create tabs
-    tab1, tab2, tab3 = st.tabs([
-        "Auto-Generate",
-        "Custom Builder",
-        "Quick Charts"
-    ])
+    # Auto-suggestions
+    with st.expander("AI-Suggested Visualizations", expanded=False):
+        suggestions = suggest_charts(df)
+        if suggestions:
+            cols = st.columns(2)
+            for i, (name, fig) in enumerate(suggestions.items()):
+                with cols[i % 2]:
+                    st.write(f"**{name}**")
+                    st.plotly_chart(fig, use_container_width=True)
+                    if st.button(f"Add to Dashboard", key=f"sugg_{name}_{i}"):
+                        add_to_dashboard(fig, name, "AI Suggestion")
 
-    with tab1:
-        render_auto_generate(df)
-
-    with tab2:
-        render_custom_builder(df)
-
-    with tab3:
-        render_quick_charts(df)
-
-
-def render_auto_generate(df):
-    """Render the auto-generate visualization tab."""
-    st.subheader("Intelligent Auto-Visualization")
-    st.markdown("Automatically generate the most relevant visualizations for your data.")
-
-    # Analyze data
-    suggestions = analyze_data_for_visualization(df)
-
-    if not suggestions:
-        st.info("No visualization suggestions available for this dataset.")
-        return
-
-    # Group by priority
-    high_priority = [s for s in suggestions if s['priority'] == 'high']
-    medium_priority = [s for s in suggestions if s['priority'] == 'medium']
-    low_priority = [s for s in suggestions if s['priority'] == 'low']
-
-    # Summary
-    col1, col2, col3 = st.columns(3)
-    col1.metric("High Priority", len(high_priority))
-    col2.metric("Medium Priority", len(medium_priority))
-    col3.metric("Low Priority", len(low_priority))
+            if st.button("✨ Auto-Generate Dashboard (Add All)", type="primary"):
+                 for name, fig in suggestions.items():
+                     add_to_dashboard(fig, name, "AI Suggestion")
+                 st.success(f"Added {len(suggestions)} charts to dashboard!")
+        else:
+            st.info("Not enough data pattern for suggestions.")
 
     st.markdown("---")
 

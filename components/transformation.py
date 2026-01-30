@@ -141,96 +141,33 @@ def render():
     with tab6:
         render_merge(df)
 
-
-def render_auto_suggest(df):
-    """Render the auto-suggest tab with transformation recommendations."""
-    st.subheader("Smart Transformation Suggestions")
-    st.markdown("Automatically detect opportunities for data transformation.")
-
-    suggestions = analyze_transformation_opportunities(df)
-
-    if not suggestions:
-        st.success("No transformation suggestions at this time. Your data structure looks good!")
-        return
-
-    # Group by priority
-    high_priority = [s for s in suggestions if s['priority'] == 'high']
-    medium_priority = [s for s in suggestions if s['priority'] == 'medium']
-    low_priority = [s for s in suggestions if s['priority'] == 'low']
-
-    if high_priority:
-        st.markdown("### High Priority")
-        for s in high_priority:
-            with st.expander(f"{s['type'].replace('_', ' ').title()}", expanded=True):
-                st.write(s['reason'])
-                if s['type'] == 'scaling':
-                    if st.button("Apply Standardization to All Numeric", key=f"apply_{s['type']}"):
-                        df_new = df.copy()
-                        for col in df.select_dtypes(include='number').columns:
-                            mean = df_new[col].mean()
-                            std = df_new[col].std()
-                            if std > 0:
-                                df_new[f'{col}_standardized'] = (df_new[col] - mean) / std
-                        st.session_state['data'] = df_new
-                        st.success("Standardized columns added!")
-                        st.rerun()
-
-    if medium_priority:
-        st.markdown("### Medium Priority")
-        for s in medium_priority:
-            with st.expander(f"{s['type'].replace('_', ' ').title()} - {s.get('column', '')}"):
-                st.write(s['reason'])
-                if s['type'] == 'log_transform':
-                    if st.button(f"Apply Log Transform to {s['column']}", key=f"apply_{s['type']}_{s['column']}"):
-                        df_new = apply_quick_transformation(df, 'log_transform', s['column'])
-                        st.session_state['data'] = df_new
-                        st.success(f"Added {s['column']}_log column!")
-                        st.rerun()
-
-    if low_priority:
-        with st.expander("Low Priority Suggestions", expanded=False):
-            for s in low_priority:
-                st.info(f"**{s['type'].replace('_', ' ').title()}** ({s.get('column', '')}): {s['reason']}")
-
+    # Suggestions
     st.markdown("---")
+    st.subheader("💡 Automated Suggestions")
+    from utils.data_processor import get_transformation_suggestions
+    suggestions = get_transformation_suggestions(df)
 
-    # Quick transformations
-    st.subheader("Quick Transformations")
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        numeric_cols = df.select_dtypes(include='number').columns.tolist()
-        if numeric_cols:
-            transform_col = st.selectbox("Select Column", numeric_cols, key="quick_transform_col")
-            transform_type = st.selectbox("Transform Type", [
-                'log_transform',
-                'standardize',
-                'normalize',
-                'sqrt_transform',
-                'square_transform',
-                'reciprocal'
-            ], format_func=lambda x: x.replace('_', ' ').title(), key="quick_transform_type")
-
-    with col2:
-        st.markdown("**Transform Descriptions:**")
-        descriptions = {
-            'log_transform': "Log(1+x) - Reduces skewness, handles zeros",
-            'standardize': "(x - mean) / std - Zero mean, unit variance",
-            'normalize': "(x - min) / (max - min) - Scale to 0-1",
-            'sqrt_transform': "sqrt(x) - Moderate skew reduction",
-            'square_transform': "x^2 - Amplify differences",
-            'reciprocal': "1/x - Inverse transformation"
-        }
-        for k, v in descriptions.items():
-            st.caption(f"**{k.replace('_', ' ').title()}**: {v}")
-
-    if numeric_cols and st.button("Apply Quick Transform", type="primary"):
-        df_new = apply_quick_transformation(df, transform_type, transform_col)
-        st.session_state['data'] = df_new
-        st.success(f"Applied {transform_type.replace('_', ' ')} to {transform_col}!")
-        st.rerun()
-
+    if suggestions:
+        for i, sugg in enumerate(suggestions):
+            with st.expander(f"Suggestion: {sugg['type']} for {sugg['column']}"):
+                st.write(f"**Reason:** {sugg['reason']}")
+                if st.button(f"Apply {sugg['type']}", key=f"apply_sugg_{i}"):
+                    if sugg['action'] == 'log':
+                         import numpy as np
+                         # Handle zeros/negative
+                         min_val = df[sugg['column']].min()
+                         shift = 0
+                         if min_val <= 0:
+                             shift = abs(min_val) + 1
+                         st.session_state['data'][sugg['column']] = np.log(df[sugg['column']] + shift)
+                         st.success(f"Applied Log Transform (shift={shift})")
+                         st.rerun()
+                    elif sugg['action'] == 'to_datetime':
+                        st.session_state['data'][sugg['column']] = pd.to_datetime(df[sugg['column']], errors='coerce')
+                        st.success("Converted to DateTime")
+                        st.rerun()
+    else:
+        st.info("No transformation suggestions at this time.")
 
 def render_filter(df):
     st.subheader("Filter Data")

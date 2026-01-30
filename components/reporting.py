@@ -70,19 +70,25 @@ def render():
 
     st.markdown("---")
 
-    # Report format selection
+    # Report configuration
     st.subheader("Generate Report")
 
-    report_format = st.radio(
-        "Select Report Format",
-        ["HTML (Recommended)", "PDF", "Word (DOCX)"],
-        horizontal=True
-    )
+    col_conf1, col_conf2 = st.columns(2)
+    with col_conf1:
+        report_template = st.selectbox("Report Template", ["Standard", "Executive Summary", "Technical Deep Dive"])
+    with col_conf2:
+         report_format = st.radio(
+            "Select Format",
+            ["HTML (Recommended)", "PDF", "Word (DOCX)"],
+            horizontal=True
+        )
 
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        if st.button("Generate Report", type="primary"):
+        if st.button("✨ Auto-Generate Report", type="primary"):
+            st.info(f"Generating {report_template} report...")
+            report_title = f"{report_title} - {report_template}"
             with st.spinner(f"Generating {report_format.split()[0]} report..."):
                 try:
                     if "HTML" in report_format:

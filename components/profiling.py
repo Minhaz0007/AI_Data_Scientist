@@ -7,9 +7,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from utils.data_processor import profile_data
+from utils.data_processor import profile_data, calculate_quality_score, detect_anomalies, detect_drift
 
 
 def calculate_data_quality_score(df):
@@ -248,257 +246,104 @@ def render():
 
             # Generate profile
             profile = profile_data(df)
+            quality_score, quality_details = calculate_quality_score(df)
 
-            # Generate recommendations
-            recommendations = generate_recommendations(df, quality_scores)
+            # --- Overview & Quality Score ---
+            st.subheader("Overview & Quality")
+            col1, col2, col3, col4, col5 = st.columns(5)
+            col1.metric("Rows", profile['rows'])
+            col2.metric("Columns", profile['columns'])
+            col3.metric("Duplicates", profile['duplicates'])
+            col4.metric("Missing Values", profile['missing_total'])
 
-        # Store for later use
-        st.session_state['quality_scores'] = quality_scores
-        st.session_state['recommendations'] = recommendations
+            # Quality Score Gauge
+            col5.metric("Quality Score", f"{quality_score}/100", delta="High" if quality_score > 80 else "Low")
 
-        # Data Quality Score Dashboard
-        st.subheader("Data Quality Score")
+            with st.expander("Quality Score Details"):
+                st.write(quality_details)
 
-        # Overall score with gauge
-        col1, col2 = st.columns([1, 2])
-
-        with col1:
-            # Create gauge chart for overall score
-            fig_gauge = go.Figure(go.Indicator(
-                mode="gauge+number",
-                value=quality_scores['overall'],
-                domain={'x': [0, 1], 'y': [0, 1]},
-                title={'text': "Overall Quality"},
-                gauge={
-                    'axis': {'range': [0, 100]},
-                    'bar': {'color': "darkblue"},
-                    'steps': [
-                        {'range': [0, 40], 'color': "red"},
-                        {'range': [40, 70], 'color': "yellow"},
-                        {'range': [70, 100], 'color': "green"}
-                    ],
-                    'threshold': {
-                        'line': {'color': "black", 'width': 4},
-                        'thickness': 0.75,
-                        'value': quality_scores['overall']
-                    }
-                }
-            ))
-            fig_gauge.update_layout(height=250, margin=dict(t=50, b=0, l=0, r=0))
-            st.plotly_chart(fig_gauge, use_container_width=True)
-
-        with col2:
-            # Quality dimensions breakdown
-            dimensions = ['completeness', 'uniqueness', 'consistency', 'validity', 'accuracy']
-            scores_list = [quality_scores[d] for d in dimensions]
-
-            fig_radar = go.Figure(data=go.Scatterpolar(
-                r=scores_list + [scores_list[0]],  # Close the polygon
-                theta=['Completeness', 'Uniqueness', 'Consistency', 'Validity', 'Accuracy', 'Completeness'],
-                fill='toself',
-                line_color='blue'
-            ))
-            fig_radar.update_layout(
-                polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
-                showlegend=False,
-                height=250,
-                margin=dict(t=30, b=30, l=30, r=30)
-            )
-            st.plotly_chart(fig_radar, use_container_width=True)
-
-        # Dimension scores as metrics
-        col1, col2, col3, col4, col5 = st.columns(5)
-        col1.metric("Completeness", f"{quality_scores['completeness']}%")
-        col2.metric("Uniqueness", f"{quality_scores['uniqueness']}%")
-        col3.metric("Consistency", f"{quality_scores['consistency']}%")
-        col4.metric("Validity", f"{quality_scores['validity']}%")
-        col5.metric("Accuracy", f"{quality_scores['accuracy']}%")
-
-        st.markdown("---")
-
-        # Automated Recommendations
-        st.subheader("Automated Recommendations")
-
-        if recommendations:
-            # Group by type
-            warnings = [r for r in recommendations if r['type'] == 'warning']
-            infos = [r for r in recommendations if r['type'] == 'info']
-
-            if warnings:
-                st.markdown("#### Issues to Address")
-                for rec in warnings:
-                    with st.container():
-                        col1, col2 = st.columns([4, 1])
-                        with col1:
-                            st.warning(f"**{rec['category']}**: {rec['message']}")
-                        with col2:
-                            if rec['action'] == 'remove_duplicates':
-                                if st.button("Fix", key=f"fix_{rec['category']}"):
-                                    st.session_state['data'] = df.drop_duplicates()
-                                    st.success("Duplicates removed!")
-                                    st.rerun()
-                            elif rec['action'] == 'drop_columns':
-                                if st.button("Drop", key=f"drop_{rec['category']}"):
-                                    st.session_state['data'] = df.drop(columns=rec['columns'])
-                                    st.success("Columns dropped!")
-                                    st.rerun()
-
-            if infos:
-                with st.expander("Suggestions for Improvement", expanded=True):
-                    for rec in infos:
-                        st.info(f"**{rec['category']}**: {rec['message']}")
-
-            # One-Click Auto-Fix
+            # --- Tabs ---
             st.markdown("---")
-            st.subheader("One-Click Auto-Fix")
+            tab1, tab2, tab3, tab4 = st.tabs(["Statistics", "Missing & Correlations", "Anomaly Detection", "Data Drift"])
 
-            if st.button("Apply All Safe Fixes", type="primary", help="Removes duplicates and imputes missing values"):
-                df_fixed = df.copy()
+            with tab1:
+                # Numerical Stats
+                st.subheader("Numerical Statistics")
+                if profile['numeric_stats']:
+                    st.dataframe(pd.DataFrame(profile['numeric_stats']))
+                else:
+                    st.info("No numerical columns found.")
 
-                # Remove duplicates
-                df_fixed = df_fixed.drop_duplicates()
+                # Column Details
+                st.subheader("Column Distribution")
+                selected_col = st.selectbox("Select Column to visualize", df.columns)
 
-                # Impute missing values
-                for col in df_fixed.columns:
-                    if df_fixed[col].isnull().sum() > 0:
-                        if df_fixed[col].dtype in ['float64', 'int64']:
-                            df_fixed[col] = df_fixed[col].fillna(df_fixed[col].median())
+                if pd.api.types.is_numeric_dtype(df[selected_col]):
+                    fig = px.histogram(df, x=selected_col, marginal="box")
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    fig = px.bar(df[selected_col].value_counts().reset_index(), x=selected_col, y='count')
+                    fig.update_layout(xaxis_title=selected_col, yaxis_title="Count")
+                    st.plotly_chart(fig, use_container_width=True)
+
+            with tab2:
+                # Missing Values
+                st.subheader("Missing Values by Column")
+                missing_df = pd.DataFrame(list(profile['missing_by_col'].items()), columns=['Column', 'Missing Count'])
+                missing_df = missing_df[missing_df['Missing Count'] > 0]
+                if not missing_df.empty:
+                    st.bar_chart(missing_df.set_index('Column'))
+                else:
+                    st.success("No missing values found.")
+
+                # Correlation Matrix
+                st.subheader("Correlation Matrix")
+                if profile['correlation']:
+                    corr_df = pd.DataFrame(profile['correlation'])
+                    fig = px.imshow(corr_df, text_auto=True, aspect="auto", color_continuous_scale='RdBu_r')
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info("Not enough numerical data for correlation.")
+
+            with tab3:
+                st.subheader("Automated Anomaly Detection")
+                st.write("Uses Isolation Forest to detect anomalies in numerical data.")
+
+                # We run this on demand inside the tab
+                if st.button("Run Anomaly Detection", key="run_anomaly"):
+                    with st.spinner("Detecting anomalies..."):
+                        df_anom, n_anomalies = detect_anomalies(df)
+                        if n_anomalies > 0:
+                            st.warning(f"Detected {n_anomalies} anomalies ({round(n_anomalies/len(df)*100, 2)}%)")
+                            st.write("Top Anomalies (sorted by anomaly score):")
+                            # Show anomalies sorted by score
+                            st.dataframe(df_anom[df_anom['is_anomaly']].sort_values('anomaly_score').head(20))
+
+                            # Visualization
+                            num_cols = df.select_dtypes(include=[np.number]).columns
+                            if len(num_cols) >= 2:
+                                fig = px.scatter(df_anom, x=num_cols[0], y=num_cols[1], color='is_anomaly',
+                                                title=f"Anomalies in {num_cols[0]} vs {num_cols[1]}",
+                                                color_discrete_map={False: 'blue', True: 'red'})
+                                st.plotly_chart(fig, use_container_width=True)
                         else:
-                            df_fixed[col] = df_fixed[col].fillna(df_fixed[col].mode().iloc[0] if len(df_fixed[col].mode()) > 0 else 'Unknown')
+                            st.success("No significant anomalies detected.")
 
-                st.session_state['data'] = df_fixed
-                st.success("Applied all safe fixes!")
-                st.rerun()
-        else:
-            st.success("No issues detected! Your data quality is excellent.")
+            with tab4:
+                st.subheader("Data Drift Analysis")
+                st.info("Compares the first half of the dataset to the second half to check for distribution shifts.")
 
-        st.markdown("---")
+                drift_report = detect_drift(df)
 
-        # Overview Metrics
-        st.subheader("Dataset Overview")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Rows", f"{profile['rows']:,}")
-        col2.metric("Columns", profile['columns'])
-        col3.metric("Duplicates", f"{profile['duplicates']:,}")
-        col4.metric("Missing Values", f"{profile['missing_total']:,}")
+                if drift_report:
+                    drifted_cols = [col for col, data in drift_report.items() if data['drift_detected']]
+                    if drifted_cols:
+                        st.error(f"Drift detected in columns: {', '.join(drifted_cols)}")
+                    else:
+                        st.success("No significant drift detected.")
 
-        # Missing Values Analysis
-        st.subheader("Missing Values Analysis")
-        missing_df = pd.DataFrame(list(profile['missing_by_col'].items()), columns=['Column', 'Missing Count'])
-        missing_df['Missing %'] = (missing_df['Missing Count'] / len(df) * 100).round(2)
-        missing_df = missing_df[missing_df['Missing Count'] > 0].sort_values('Missing Count', ascending=False)
-
-        if not missing_df.empty:
-            fig_missing = px.bar(
-                missing_df,
-                x='Column',
-                y='Missing %',
-                title='Missing Values by Column',
-                color='Missing %',
-                color_continuous_scale='Reds'
-            )
-            st.plotly_chart(fig_missing, use_container_width=True)
-        else:
-            st.success("No missing values found!")
-
-        # Numerical Statistics
-        st.subheader("Numerical Statistics")
-        if profile['numeric_stats']:
-            stats_df = pd.DataFrame(profile['numeric_stats'])
-            st.dataframe(stats_df, use_container_width=True)
-        else:
-            st.info("No numerical columns found.")
-
-        # Correlation Matrix
-        st.subheader("Correlation Analysis")
-        if profile['correlation']:
-            corr_df = pd.DataFrame(profile['correlation'])
-            fig = px.imshow(
-                corr_df,
-                text_auto='.2f',
-                aspect="auto",
-                color_continuous_scale='RdBu_r',
-                zmin=-1, zmax=1
-            )
-            fig.update_layout(title='Correlation Matrix')
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Not enough numerical data for correlation.")
-
-        # Column Distribution Analysis
-        st.subheader("Column Distribution Analysis")
-
-        selected_col = st.selectbox("Select Column to Analyze", df.columns)
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown(f"**Statistics for {selected_col}**")
-            col_stats = {
-                'Data Type': str(df[selected_col].dtype),
-                'Non-Null Count': df[selected_col].notna().sum(),
-                'Null Count': df[selected_col].isna().sum(),
-                'Unique Values': df[selected_col].nunique(),
-                'Memory Usage': f"{df[selected_col].memory_usage(deep=True) / 1024:.2f} KB"
-            }
-
-            if pd.api.types.is_numeric_dtype(df[selected_col]):
-                col_stats.update({
-                    'Mean': f"{df[selected_col].mean():.4f}",
-                    'Median': f"{df[selected_col].median():.4f}",
-                    'Std Dev': f"{df[selected_col].std():.4f}",
-                    'Min': f"{df[selected_col].min():.4f}",
-                    'Max': f"{df[selected_col].max():.4f}"
-                })
-
-                # Anomaly detection
-                anomalies = detect_anomalies_simple(df, selected_col)
-                col_stats['Potential Outliers'] = f"{anomalies['count']} ({anomalies['percentage']:.1f}%)"
-
-            for k, v in col_stats.items():
-                st.write(f"**{k}:** {v}")
-
-        with col2:
-            if pd.api.types.is_numeric_dtype(df[selected_col]):
-                fig = px.histogram(df, x=selected_col, marginal="box", title=f'Distribution of {selected_col}')
-                st.plotly_chart(fig, use_container_width=True)
-            else:
-                value_counts = df[selected_col].value_counts().head(20)
-                fig = px.bar(
-                    x=value_counts.index.astype(str),
-                    y=value_counts.values,
-                    title=f'Top 20 Values in {selected_col}',
-                    labels={'x': selected_col, 'y': 'Count'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
-
-        # Anomaly Detection Section
-        st.markdown("---")
-        st.subheader("Automated Anomaly Detection")
-
-        numeric_cols = df.select_dtypes(include='number').columns.tolist()
-
-        if numeric_cols:
-            anomaly_col = st.selectbox("Select Column for Anomaly Detection", numeric_cols, key="anomaly_select")
-
-            if st.button("Detect Anomalies"):
-                anomalies = detect_anomalies_simple(df, anomaly_col)
-
-                col1, col2, col3 = st.columns(3)
-                col1.metric("Anomalies Found", anomalies['count'])
-                col2.metric("Percentage", f"{anomalies['percentage']:.2f}%")
-                col3.metric("Bounds", f"[{anomalies['lower_bound']:.2f}, {anomalies['upper_bound']:.2f}]")
-
-                # Visualization
-                fig = go.Figure()
-                fig.add_trace(go.Box(y=df[anomaly_col], name=anomaly_col, boxpoints='outliers'))
-                fig.add_hline(y=anomalies['lower_bound'], line_dash="dash", line_color="red", annotation_text="Lower Bound")
-                fig.add_hline(y=anomalies['upper_bound'], line_dash="dash", line_color="red", annotation_text="Upper Bound")
-                fig.update_layout(title=f"Anomaly Detection: {anomaly_col}")
-                st.plotly_chart(fig, use_container_width=True)
-
-                if anomalies['count'] > 0:
-                    with st.expander("View Anomalous Rows"):
-                        st.dataframe(df.loc[anomalies['indices'][:50]], use_container_width=True)
-        else:
-            st.info("No numeric columns available for anomaly detection.")
+                    # Show details
+                    st.write("Drift Metrics:")
+                    st.json(drift_report)
+                else:
+                    st.info("Dataset too small for drift detection (need > 50 rows).")
