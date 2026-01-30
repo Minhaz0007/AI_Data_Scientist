@@ -51,7 +51,7 @@ def load_sql(connection_string, query):
     except Exception as e:
         raise ValueError(f"Error loading SQL: {e}")
 
-@st.cache_data(show_spinner=False)
+@st.cache_data
 def load_data(file, file_type):
     """
     Load data from a file based on its type.
