@@ -9,6 +9,7 @@ import pyarrow as pa
 from utils.data_loader import load_data, load_sql, load_url, load_api, load_sample
 import os
 import requests
+import warnings
 from io import StringIO
 from io import BytesIO
 
@@ -103,7 +104,9 @@ def auto_optimize_dtypes(df):
         if col_type == 'object':
             # Check if it's a date
             try:
-                df[col] = pd.to_datetime(df[col], errors='raise')
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", UserWarning)
+                    df[col] = pd.to_datetime(df[col], errors='raise')
                 continue
             except:
                 pass

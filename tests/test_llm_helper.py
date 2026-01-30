@@ -24,16 +24,18 @@ class TestLLMHelper(unittest.TestCase):
         response = get_ai_response("prompt", "fake_key", "anthropic")
         self.assertEqual(response, "Insights generated.")
 
-    @patch('google.generativeai.GenerativeModel')
-    @patch('google.generativeai.configure')
-    def test_get_ai_response_google(self, mock_configure, mock_genai_model):
-        # Mock the model and response
-        mock_model_instance = MagicMock()
-        mock_genai_model.return_value = mock_model_instance
+    @patch('google.genai.Client')
+    def test_get_ai_response_google(self, mock_genai_client_class):
+        # Mock the client instance
+        mock_client = MagicMock()
+        mock_genai_client_class.return_value = mock_client
 
+        # Mock response
         mock_response = MagicMock()
         mock_response.text = "Gemini insights."
-        mock_model_instance.generate_content.return_value = mock_response
+
+        # Mock models.generate_content
+        mock_client.models.generate_content.return_value = mock_response
 
         response = get_ai_response("prompt", "fake_key", "google")
         self.assertEqual(response, "Gemini insights.")

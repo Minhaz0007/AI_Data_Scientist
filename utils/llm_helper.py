@@ -175,9 +175,8 @@ def get_llm_client(provider, api_key):
     Google provider is not cached due to global state configuration.
     """
     if provider == 'google':
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        return genai
+        from google import genai
+        return genai.Client(api_key=api_key)
     else:
         return _get_cached_client(provider, api_key)
 
@@ -278,10 +277,11 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             return response.message.content[0].text
 
         elif provider == 'google':
-            # client is the genai module
             model_name = model or LLM_PROVIDERS['google']['default_model']
-            model_instance = client.GenerativeModel(model_name)
-            response = model_instance.generate_content(prompt)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt
+            )
             return response.text
 
         else:
