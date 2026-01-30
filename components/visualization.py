@@ -68,6 +68,109 @@ def suggest_charts(df):
     return suggestions
 
 
+def analyze_visualization_suggestions(df):
+    """Analyze data and return prioritized visualization suggestions."""
+    suggestions = []
+
+    numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+    categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
+    datetime_cols = []
+    for col in df.columns:
+        if pd.api.types.is_datetime64_any_dtype(df[col]):
+            datetime_cols.append(col)
+
+    # High priority: Distributions for key numeric columns
+    for col in numeric_cols[:3]:
+        suggestions.append({
+            'type': 'histogram',
+            'columns': [col],
+            'title': f'Distribution of {col}',
+            'reason': 'Understanding data distribution is fundamental',
+            'priority': 'high'
+        })
+
+    # High priority: Correlation heatmap if multiple numeric columns
+    if len(numeric_cols) > 3:
+        suggestions.append({
+            'type': 'heatmap',
+            'columns': numeric_cols,
+            'title': 'Correlation Matrix',
+            'reason': 'Identify relationships between numeric variables',
+            'priority': 'high'
+        })
+
+    # Medium priority: Scatter plots for correlated pairs
+    if len(numeric_cols) >= 2:
+        for i, col1 in enumerate(numeric_cols[:3]):
+            for col2 in numeric_cols[i+1:4]:
+                suggestions.append({
+                    'type': 'scatter',
+                    'columns': [col1, col2],
+                    'title': f'{col2} vs {col1}',
+                    'reason': 'Explore potential relationships',
+                    'priority': 'medium'
+                })
+
+    # Medium priority: Box plots for categorical vs numeric
+    if categorical_cols and numeric_cols:
+        for cat in categorical_cols[:2]:
+            if df[cat].nunique() <= 10:
+                for num in numeric_cols[:2]:
+                    suggestions.append({
+                        'type': 'box',
+                        'columns': [num, cat],
+                        'title': f'{num} by {cat}',
+                        'reason': 'Compare distributions across categories',
+                        'priority': 'medium'
+                    })
+
+    # Medium priority: Bar charts for categorical distributions
+    for cat in categorical_cols[:2]:
+        if df[cat].nunique() <= 20:
+            suggestions.append({
+                'type': 'bar',
+                'columns': [cat],
+                'title': f'Distribution of {cat}',
+                'reason': 'Understand category frequencies',
+                'priority': 'medium'
+            })
+
+    # Low priority: Time series if datetime exists
+    if datetime_cols and numeric_cols:
+        for date_col in datetime_cols[:1]:
+            for num_col in numeric_cols[:2]:
+                suggestions.append({
+                    'type': 'line',
+                    'columns': [date_col, num_col],
+                    'title': f'{num_col} over Time',
+                    'reason': 'Analyze temporal patterns',
+                    'priority': 'low'
+                })
+
+    # Low priority: Violin plots
+    for col in numeric_cols[:2]:
+        suggestions.append({
+            'type': 'violin',
+            'columns': [col],
+            'title': f'Violin Plot of {col}',
+            'reason': 'Detailed distribution visualization',
+            'priority': 'low'
+        })
+
+    # Low priority: Pie charts for low-cardinality categoricals
+    for cat in categorical_cols[:1]:
+        if df[cat].nunique() <= 8:
+            suggestions.append({
+                'type': 'pie',
+                'columns': [cat],
+                'title': f'Proportion of {cat}',
+                'reason': 'Show category proportions',
+                'priority': 'low'
+            })
+
+    return suggestions
+
+
 def generate_auto_chart(df, suggestion):
     """Generate a chart based on a suggestion."""
     chart_type = suggestion['type']
@@ -161,6 +264,12 @@ def render():
             st.info("Not enough data pattern for suggestions.")
 
     st.markdown("---")
+
+    # Analyze and prioritize visualization suggestions
+    viz_suggestions = analyze_visualization_suggestions(df)
+    high_priority = [s for s in viz_suggestions if s['priority'] == 'high']
+    medium_priority = [s for s in viz_suggestions if s['priority'] == 'medium']
+    low_priority = [s for s in viz_suggestions if s['priority'] == 'low']
 
     # One-click generate all
     col1, col2 = st.columns([2, 1])

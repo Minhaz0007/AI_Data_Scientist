@@ -6,6 +6,7 @@ Includes auto-clean suggestions, one-click cleaning, and comprehensive data clea
 import streamlit as st
 import pandas as pd
 import numpy as np
+import pyarrow as pa
 from utils.data_processor import (
     remove_duplicates, impute_missing, normalize_column_names, get_missing_summary,
     convert_column_type, get_column_types, clean_string_column, map_values,
@@ -373,7 +374,11 @@ def render():
 
     # Show Data Preview
     st.subheader("Cleaned Data Preview")
-    st.dataframe(st.session_state['data'].head())
+    try:
+        st.dataframe(st.session_state['data'].head())
+    except pa.ArrowInvalid:
+        st.warning("Displaying data as string due to mixed types.")
+        st.dataframe(st.session_state['data'].head().astype(str))
 
 
 def render_missing_values(df):
