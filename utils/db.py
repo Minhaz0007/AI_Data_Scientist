@@ -9,6 +9,11 @@ def get_connection_string():
     """Get database connection string from environment variable."""
     return os.environ.get("DATABASE_URL")
 
+@st.cache_resource
+def get_engine(conn_str):
+    """Get cached database engine."""
+    return create_engine(conn_str)
+
 def init_db():
     """Initialize the database with necessary tables."""
     conn_str = get_connection_string()
@@ -16,7 +21,7 @@ def init_db():
         return False
 
     try:
-        engine = create_engine(conn_str)
+        engine = get_engine(conn_str)
         with engine.connect() as conn:
             conn.execute(text("""
                 CREATE TABLE IF NOT EXISTS projects (
@@ -40,7 +45,7 @@ def save_project(name, summary, insights):
         return False
 
     try:
-        engine = create_engine(conn_str)
+        engine = get_engine(conn_str)
         with engine.connect() as conn:
             # Simple insert
             conn.execute(
@@ -60,7 +65,7 @@ def load_projects():
         return []
 
     try:
-        engine = create_engine(conn_str)
+        engine = get_engine(conn_str)
         with engine.connect() as conn:
             result = conn.execute(text("SELECT id, name, created_at FROM projects ORDER BY created_at DESC"))
             return result.fetchall()
@@ -75,7 +80,7 @@ def load_project_details(project_id):
         return None
 
     try:
-        engine = create_engine(conn_str)
+        engine = get_engine(conn_str)
         with engine.connect() as conn:
             result = conn.execute(
                 text("SELECT name, summary, insights FROM projects WHERE id = :id"),

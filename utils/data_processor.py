@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
+import streamlit as st
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 from scipy import stats
 
+@st.cache_data
 def profile_data(df):
     """
     Generate a comprehensive profile of the dataframe.
