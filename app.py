@@ -229,42 +229,64 @@ def apply_theme():
             border-bottom: 2px solid var(--accent) !important;
         }
 
-        /* File Uploader Dropzone */
-        [data-testid="stFileUploadDropzone"] {
+        /* File Uploader Dropzone - Enhanced contrast for dark theme */
+        [data-testid="stFileUploadDropzone"],
+        [data-testid="stFileUploader"] section {
             background-color: var(--bg-tertiary) !important;
             border: 2px dashed var(--border) !important;
             border-radius: 12px !important;
         }
 
-        [data-testid="stFileUploadDropzone"]:hover {
+        [data-testid="stFileUploadDropzone"]:hover,
+        [data-testid="stFileUploader"] section:hover {
             border-color: var(--accent) !important;
             background-color: var(--bg-hover) !important;
         }
 
-        [data-testid="stFileUploadDropzone"] * {
-            color: var(--text-primary) !important;
+        /* Force all text in file uploader to be visible */
+        [data-testid="stFileUploadDropzone"] *,
+        [data-testid="stFileUploader"] *,
+        [data-testid="stFileUploader"] section *,
+        [data-testid="stFileUploader"] div,
+        [data-testid="stFileUploader"] span,
+        [data-testid="stFileUploader"] p,
+        [data-testid="stFileUploader"] small {
+            color: #ffffff !important;
         }
 
-        [data-testid="stFileUploadDropzone"] span {
-            color: var(--text-primary) !important;
+        /* Main dropzone text */
+        [data-testid="stFileUploadDropzone"] span,
+        [data-testid="stFileUploader"] section span,
+        [data-testid="stFileUploader"] [data-testid="stMarkdownContainer"] span {
+            color: #ffffff !important;
+            font-weight: 500 !important;
         }
 
+        /* Secondary text (file limits, etc.) */
         [data-testid="stFileUploadDropzone"] small,
-        [data-testid="stFileUploadDropzone"] p {
-            color: var(--text-secondary) !important;
+        [data-testid="stFileUploadDropzone"] p,
+        [data-testid="stFileUploader"] section small,
+        [data-testid="stFileUploader"] section p,
+        [data-testid="stFileUploader"] small {
+            color: #b0b0b0 !important;
         }
 
-        [data-testid="stFileUploadDropzone"] svg {
-            stroke: var(--text-secondary) !important;
+        /* Upload icon */
+        [data-testid="stFileUploadDropzone"] svg,
+        [data-testid="stFileUploader"] section svg {
+            stroke: #b0b0b0 !important;
         }
 
-        [data-testid="stFileUploadDropzone"] button {
+        /* Browse files button */
+        [data-testid="stFileUploadDropzone"] button,
+        [data-testid="stFileUploader"] section button {
             background-color: var(--bg-secondary) !important;
-            color: var(--text-primary) !important;
+            color: #ffffff !important;
             border: 1px solid var(--border) !important;
         }
 
-        [data-testid="stFileUploadDropzone"] button:hover {
+        [data-testid="stFileUploadDropzone"] button:hover,
+        [data-testid="stFileUploader"] section button:hover {
             background-color: var(--accent) !important;
             border-color: var(--accent) !important;
         }
