@@ -14,17 +14,6 @@ LLM_PROVIDERS = {
         ],
         'default_model': 'claude-sonnet-4-20250514'
     },
-    'google': {
-        'name': 'Google (Gemini)',
-        'env_var': 'GOOGLE_API_KEY',
-        'models': [
-            'gemini-2.0-flash',
-            'gemini-2.0-flash-lite',
-            'gemini-1.5-pro',
-            'gemini-1.5-flash'
-        ],
-        'default_model': 'gemini-2.0-flash'
-    },
     'openai': {
         'name': 'OpenAI (GPT)',
         'env_var': 'OPENAI_API_KEY',
@@ -35,11 +24,65 @@ LLM_PROVIDERS = {
             'gpt-3.5-turbo'
         ],
         'default_model': 'gpt-4o'
+    },
+    'groq': {
+        'name': 'Groq',
+        'env_var': 'GROQ_API_KEY',
+        'models': [
+            'llama-3.3-70b-versatile',
+            'llama-3.1-8b-instant',
+            'mixtral-8x7b-32768',
+            'gemma2-9b-it'
+        ],
+        'default_model': 'llama-3.3-70b-versatile'
+    },
+    'mistral': {
+        'name': 'Mistral AI',
+        'env_var': 'MISTRAL_API_KEY',
+        'models': [
+            'mistral-large-latest',
+            'mistral-medium-latest',
+            'mistral-small-latest',
+            'open-mixtral-8x22b'
+        ],
+        'default_model': 'mistral-large-latest'
+    },
+    'together': {
+        'name': 'Together AI',
+        'env_var': 'TOGETHER_API_KEY',
+        'models': [
+            'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo',
+            'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo',
+            'mistralai/Mixtral-8x7B-Instruct-v0.1',
+            'Qwen/Qwen2.5-72B-Instruct-Turbo'
+        ],
+        'default_model': 'meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo'
+    },
+    'cohere': {
+        'name': 'Cohere',
+        'env_var': 'COHERE_API_KEY',
+        'models': [
+            'command-r-plus',
+            'command-r',
+            'command-light'
+        ],
+        'default_model': 'command-r-plus'
+    },
+    'google': {
+        'name': 'Google (Gemini)',
+        'env_var': 'GOOGLE_API_KEY',
+        'models': [
+            'gemini-2.0-flash',
+            'gemini-2.0-flash-lite',
+            'gemini-1.5-pro',
+            'gemini-1.5-flash'
+        ],
+        'default_model': 'gemini-2.0-flash'
     }
 }
 
 # Provider priority order for auto-detection
-PROVIDER_PRIORITY = ['anthropic', 'openai', 'google']
+PROVIDER_PRIORITY = ['anthropic', 'openai', 'groq', 'mistral', 'together', 'cohere', 'google']
 
 
 def get_available_provider():
@@ -106,21 +149,25 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
     Args:
         prompt: The prompt text.
         api_key: The API key.
-        provider: 'anthropic', 'google', or 'openai'.
+        provider: Provider code (anthropic, openai, groq, mistral, together, cohere, google).
         model: Specific model to use (optional, uses provider default if not specified).
         max_tokens: Maximum tokens in the response.
     """
     # Fallback to environment variables if api_key is not provided
-    if not api_key:
-        if provider == 'anthropic':
-            api_key = os.environ.get('ANTHROPIC_API_KEY')
-        elif provider == 'google':
-            api_key = os.environ.get('GOOGLE_API_KEY')
-        elif provider == 'openai':
-            api_key = os.environ.get('OPENAI_API_KEY')
+    if not api_key and provider in LLM_PROVIDERS:
+        env_var = LLM_PROVIDERS[provider]['env_var']
+        # Check Streamlit secrets first
+        try:
+            if hasattr(st, 'secrets') and env_var in st.secrets:
+                api_key = st.secrets[env_var]
+        except Exception:
+            pass
+        # Then check environment variables
+        if not api_key:
+            api_key = os.environ.get(env_var)
 
     if not api_key:
-        return "Error: API key is missing. Please provide it in the sidebar or set it as an environment variable."
+        return "Error: API key is missing. Please configure it in Streamlit secrets or environment variables."
 
     try:
         if provider == 'anthropic':
@@ -136,14 +183,6 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             )
             return message.content[0].text
 
-        elif provider == 'google':
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
-            model_name = model or LLM_PROVIDERS['google']['default_model']
-            model_instance = genai.GenerativeModel(model_name)
-            response = model_instance.generate_content(prompt)
-            return response.text
-
         elif provider == 'openai':
             from openai import OpenAI
             client = OpenAI(api_key=api_key)
@@ -157,8 +196,68 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             )
             return response.choices[0].message.content
 
+        elif provider == 'groq':
+            from groq import Groq
+            client = Groq(api_key=api_key)
+            model_name = model or LLM_PROVIDERS['groq']['default_model']
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens
+            )
+            return response.choices[0].message.content
+
+        elif provider == 'mistral':
+            from mistralai import Mistral
+            client = Mistral(api_key=api_key)
+            model_name = model or LLM_PROVIDERS['mistral']['default_model']
+            response = client.chat.complete(
+                model=model_name,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens
+            )
+            return response.choices[0].message.content
+
+        elif provider == 'together':
+            from together import Together
+            client = Together(api_key=api_key)
+            model_name = model or LLM_PROVIDERS['together']['default_model']
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens
+            )
+            return response.choices[0].message.content
+
+        elif provider == 'cohere':
+            import cohere
+            client = cohere.ClientV2(api_key=api_key)
+            model_name = model or LLM_PROVIDERS['cohere']['default_model']
+            response = client.chat(
+                model=model_name,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens
+            )
+            return response.message.content[0].text
+
+        elif provider == 'google':
+            import google.generativeai as genai
+            genai.configure(api_key=api_key)
+            model_name = model or LLM_PROVIDERS['google']['default_model']
+            model_instance = genai.GenerativeModel(model_name)
+            response = model_instance.generate_content(prompt)
+            return response.text
+
         else:
-            return "Error: Unsupported provider. Choose 'anthropic', 'google', or 'openai'."
+            return f"Error: Unsupported provider '{provider}'."
 
     except Exception as e:
         return f"Error generating response: {str(e)}"
