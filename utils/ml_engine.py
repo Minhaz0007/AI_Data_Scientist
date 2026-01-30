@@ -247,7 +247,7 @@ class MLEngine:
         cm = confusion_matrix(y_test, y_pred_test)
 
         # Classification Report
-        class_report = classification_report(y_test, y_pred_test, output_dict=True)
+        class_report = classification_report(y_test, y_pred_test, output_dict=True, zero_division=0)
 
         # ROC Curve (for binary classification)
         roc_data = None
