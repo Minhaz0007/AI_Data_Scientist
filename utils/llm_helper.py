@@ -142,6 +142,45 @@ def get_all_available_providers():
 
     return available
 
+@st.cache_resource
+def _get_cached_client(provider, api_key):
+    """
+    Internal function to get or create an LLM client, cached by Streamlit.
+    This is used for providers where the client object encapsulates the connection/state.
+    """
+    if provider == 'anthropic':
+        import anthropic
+        return anthropic.Anthropic(api_key=api_key)
+    elif provider == 'openai':
+        from openai import OpenAI
+        return OpenAI(api_key=api_key)
+    elif provider == 'groq':
+        from groq import Groq
+        return Groq(api_key=api_key)
+    elif provider == 'mistral':
+        from mistralai import Mistral
+        return Mistral(api_key=api_key)
+    elif provider == 'together':
+        from together import Together
+        return Together(api_key=api_key)
+    elif provider == 'cohere':
+        import cohere
+        return cohere.ClientV2(api_key=api_key)
+    else:
+        return None
+
+def get_llm_client(provider, api_key):
+    """
+    Get an LLM client. Uses caching for supported providers.
+    Google provider is not cached due to global state configuration.
+    """
+    if provider == 'google':
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+        return genai
+    else:
+        return _get_cached_client(provider, api_key)
+
 def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_tokens=4096):
     """
     Generate a response from an LLM.
@@ -170,9 +209,9 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
         return "Error: API key is missing. Please configure it in Streamlit secrets or environment variables."
 
     try:
+        client = get_llm_client(provider, api_key)
+
         if provider == 'anthropic':
-            import anthropic
-            client = anthropic.Anthropic(api_key=api_key)
             model_name = model or LLM_PROVIDERS['anthropic']['default_model']
             message = client.messages.create(
                 model=model_name,
@@ -184,8 +223,6 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             return message.content[0].text
 
         elif provider == 'openai':
-            from openai import OpenAI
-            client = OpenAI(api_key=api_key)
             model_name = model or LLM_PROVIDERS['openai']['default_model']
             response = client.chat.completions.create(
                 model=model_name,
@@ -197,8 +234,6 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             return response.choices[0].message.content
 
         elif provider == 'groq':
-            from groq import Groq
-            client = Groq(api_key=api_key)
             model_name = model or LLM_PROVIDERS['groq']['default_model']
             response = client.chat.completions.create(
                 model=model_name,
@@ -210,8 +245,6 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             return response.choices[0].message.content
 
         elif provider == 'mistral':
-            from mistralai import Mistral
-            client = Mistral(api_key=api_key)
             model_name = model or LLM_PROVIDERS['mistral']['default_model']
             response = client.chat.complete(
                 model=model_name,
@@ -223,8 +256,6 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             return response.choices[0].message.content
 
         elif provider == 'together':
-            from together import Together
-            client = Together(api_key=api_key)
             model_name = model or LLM_PROVIDERS['together']['default_model']
             response = client.chat.completions.create(
                 model=model_name,
@@ -236,8 +267,6 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             return response.choices[0].message.content
 
         elif provider == 'cohere':
-            import cohere
-            client = cohere.ClientV2(api_key=api_key)
             model_name = model or LLM_PROVIDERS['cohere']['default_model']
             response = client.chat(
                 model=model_name,
@@ -249,10 +278,9 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             return response.message.content[0].text
 
         elif provider == 'google':
-            import google.generativeai as genai
-            genai.configure(api_key=api_key)
+            # client is the genai module
             model_name = model or LLM_PROVIDERS['google']['default_model']
-            model_instance = genai.GenerativeModel(model_name)
+            model_instance = client.GenerativeModel(model_name)
             response = model_instance.generate_content(prompt)
             return response.text
 
