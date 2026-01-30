@@ -320,3 +320,349 @@ def unpivot_table(df, id_vars, value_vars=None, var_name='variable', value_name=
     Unpivot (melt) a dataframe.
     """
     return pd.melt(df, id_vars=id_vars, value_vars=value_vars, var_name=var_name, value_name=value_name)
+
+
+# ============================================================================
+# DATA TYPE CONVERSION
+# ============================================================================
+
+def convert_column_type(df, column, target_type, datetime_format=None, errors='coerce'):
+    """
+    Convert a column to a specified data type.
+
+    Args:
+        df: pandas DataFrame
+        column: column name to convert
+        target_type: 'int', 'float', 'string', 'datetime', 'boolean', 'category'
+        datetime_format: format string for datetime parsing (optional)
+        errors: 'coerce' (invalid become NaN), 'raise' (raise exception), 'ignore' (return original)
+
+    Returns:
+        DataFrame with converted column
+    """
+    df_result = df.copy()
+
+    try:
+        if target_type == 'int':
+            df_result[column] = pd.to_numeric(df_result[column], errors=errors).astype('Int64')
+        elif target_type == 'float':
+            df_result[column] = pd.to_numeric(df_result[column], errors=errors)
+        elif target_type == 'string':
+            df_result[column] = df_result[column].astype(str)
+        elif target_type == 'datetime':
+            if datetime_format:
+                df_result[column] = pd.to_datetime(df_result[column], format=datetime_format, errors=errors)
+            else:
+                df_result[column] = pd.to_datetime(df_result[column], errors=errors)
+        elif target_type == 'boolean':
+            # Handle common boolean representations
+            bool_map = {
+                'true': True, 'false': False,
+                'yes': True, 'no': False,
+                'y': True, 'n': False,
+                '1': True, '0': False,
+                1: True, 0: False,
+                1.0: True, 0.0: False
+            }
+            df_result[column] = df_result[column].map(
+                lambda x: bool_map.get(str(x).lower().strip(), x) if pd.notna(x) else x
+            ).astype('boolean')
+        elif target_type == 'category':
+            df_result[column] = df_result[column].astype('category')
+    except Exception as e:
+        if errors == 'raise':
+            raise e
+        # If ignore, return original
+
+    return df_result
+
+
+def get_column_types(df):
+    """
+    Get a summary of column types in the dataframe.
+
+    Returns:
+        dict with column names as keys and type info as values
+    """
+    type_info = {}
+    for col in df.columns:
+        dtype = df[col].dtype
+        type_info[col] = {
+            'dtype': str(dtype),
+            'nullable': df[col].isnull().any(),
+            'unique_count': df[col].nunique(),
+            'sample_values': df[col].dropna().head(3).tolist()
+        }
+    return type_info
+
+
+# ============================================================================
+# STRING CLEANING
+# ============================================================================
+
+def clean_string_column(df, column, operations):
+    """
+    Apply string cleaning operations to a column.
+
+    Args:
+        df: pandas DataFrame
+        column: column name to clean
+        operations: list of operations to apply. Options:
+            - 'trim': Remove leading/trailing whitespace
+            - 'lower': Convert to lowercase
+            - 'upper': Convert to uppercase
+            - 'title': Convert to title case
+            - 'remove_special': Remove special characters (keep alphanumeric and spaces)
+            - 'remove_digits': Remove all digits
+            - 'remove_whitespace': Remove all whitespace
+            - 'normalize_whitespace': Replace multiple spaces with single space
+
+    Returns:
+        DataFrame with cleaned column
+    """
+    df_result = df.copy()
+    col_data = df_result[column].astype(str)
+
+    for op in operations:
+        if op == 'trim':
+            col_data = col_data.str.strip()
+        elif op == 'lower':
+            col_data = col_data.str.lower()
+        elif op == 'upper':
+            col_data = col_data.str.upper()
+        elif op == 'title':
+            col_data = col_data.str.title()
+        elif op == 'remove_special':
+            col_data = col_data.str.replace(r'[^a-zA-Z0-9\s]', '', regex=True)
+        elif op == 'remove_digits':
+            col_data = col_data.str.replace(r'\d', '', regex=True)
+        elif op == 'remove_whitespace':
+            col_data = col_data.str.replace(r'\s', '', regex=True)
+        elif op == 'normalize_whitespace':
+            col_data = col_data.str.replace(r'\s+', ' ', regex=True).str.strip()
+
+    # Handle 'nan' strings that result from NaN values
+    col_data = col_data.replace('nan', np.nan)
+    df_result[column] = col_data
+
+    return df_result
+
+
+# ============================================================================
+# VALUE MAPPING / REPLACEMENT
+# ============================================================================
+
+def map_values(df, column, mapping, default=None):
+    """
+    Map/replace values in a column based on a mapping dictionary.
+
+    Args:
+        df: pandas DataFrame
+        column: column name
+        mapping: dict of {old_value: new_value}
+        default: value to use for unmapped values (None keeps original)
+
+    Returns:
+        DataFrame with mapped values
+    """
+    df_result = df.copy()
+
+    if default is not None:
+        df_result[column] = df_result[column].map(mapping).fillna(default)
+    else:
+        df_result[column] = df_result[column].replace(mapping)
+
+    return df_result
+
+
+def replace_values(df, column, find_value, replace_value, match_type='exact'):
+    """
+    Find and replace values in a column.
+
+    Args:
+        match_type: 'exact', 'contains', 'startswith', 'endswith', 'regex'
+    """
+    df_result = df.copy()
+
+    if match_type == 'exact':
+        df_result[column] = df_result[column].replace(find_value, replace_value)
+    elif match_type == 'contains':
+        mask = df_result[column].astype(str).str.contains(str(find_value), na=False)
+        df_result.loc[mask, column] = replace_value
+    elif match_type == 'startswith':
+        mask = df_result[column].astype(str).str.startswith(str(find_value), na=False)
+        df_result.loc[mask, column] = replace_value
+    elif match_type == 'endswith':
+        mask = df_result[column].astype(str).str.endswith(str(find_value), na=False)
+        df_result.loc[mask, column] = replace_value
+    elif match_type == 'regex':
+        df_result[column] = df_result[column].astype(str).str.replace(find_value, replace_value, regex=True)
+
+    return df_result
+
+
+# ============================================================================
+# COLUMN MANAGEMENT
+# ============================================================================
+
+def drop_columns(df, columns):
+    """
+    Drop specified columns from the dataframe.
+
+    Args:
+        columns: list of column names to drop
+    """
+    return df.drop(columns=columns, errors='ignore')
+
+
+def rename_columns(df, rename_map):
+    """
+    Rename columns based on a mapping.
+
+    Args:
+        rename_map: dict of {old_name: new_name}
+    """
+    return df.rename(columns=rename_map)
+
+
+def reorder_columns(df, column_order):
+    """
+    Reorder columns in the dataframe.
+
+    Args:
+        column_order: list of column names in desired order
+    """
+    # Include any columns not in the order list at the end
+    remaining = [c for c in df.columns if c not in column_order]
+    return df[column_order + remaining]
+
+
+def split_column(df, column, delimiter, new_column_names=None, expand=True):
+    """
+    Split a column into multiple columns.
+
+    Args:
+        column: column to split
+        delimiter: string to split on
+        new_column_names: list of names for new columns (optional)
+        expand: if True, create separate columns; if False, create a list column
+    """
+    df_result = df.copy()
+
+    if expand:
+        split_data = df_result[column].astype(str).str.split(delimiter, expand=True)
+        if new_column_names:
+            # Use provided names for as many columns as we have
+            for i, name in enumerate(new_column_names):
+                if i < len(split_data.columns):
+                    df_result[name] = split_data[i]
+        else:
+            # Auto-generate column names
+            for i in range(len(split_data.columns)):
+                df_result[f'{column}_part{i+1}'] = split_data[i]
+    else:
+        df_result[f'{column}_split'] = df_result[column].astype(str).str.split(delimiter)
+
+    return df_result
+
+
+# ============================================================================
+# ENHANCED DEDUPLICATION
+# ============================================================================
+
+def remove_duplicates_subset(df, subset=None, keep='first'):
+    """
+    Remove duplicates based on a subset of columns.
+
+    Args:
+        subset: list of column names to consider for duplicates (None = all columns)
+        keep: 'first', 'last', or False (remove all duplicates)
+    """
+    return df.drop_duplicates(subset=subset, keep=keep)
+
+
+def get_duplicate_rows(df, subset=None):
+    """
+    Get rows that are duplicates.
+
+    Args:
+        subset: list of column names to consider
+
+    Returns:
+        DataFrame containing only duplicate rows
+    """
+    mask = df.duplicated(subset=subset, keep=False)
+    return df[mask]
+
+
+# ============================================================================
+# ROW MANAGEMENT
+# ============================================================================
+
+def remove_rows_by_index(df, indices):
+    """
+    Remove rows by their index values.
+    """
+    return df.drop(index=indices, errors='ignore')
+
+
+def remove_rows_by_condition(df, column, condition, value):
+    """
+    Remove rows based on a condition.
+
+    Args:
+        condition: 'equals', 'not_equals', 'greater_than', 'less_than', 'contains', 'is_null', 'is_not_null'
+    """
+    if condition == 'equals':
+        return df[df[column] != value]
+    elif condition == 'not_equals':
+        return df[df[column] == value]
+    elif condition == 'greater_than':
+        return df[df[column] <= float(value)]
+    elif condition == 'less_than':
+        return df[df[column] >= float(value)]
+    elif condition == 'contains':
+        return df[~df[column].astype(str).str.contains(str(value), na=False)]
+    elif condition == 'is_null':
+        return df[df[column].notna()]
+    elif condition == 'is_not_null':
+        return df[df[column].isna()]
+    return df
+
+
+# ============================================================================
+# ENCODING
+# ============================================================================
+
+def label_encode(df, column, mapping=None):
+    """
+    Apply label encoding to a categorical column.
+
+    Args:
+        column: column to encode
+        mapping: optional dict of {value: code}. If None, auto-generate.
+
+    Returns:
+        tuple of (encoded DataFrame, mapping dict)
+    """
+    df_result = df.copy()
+
+    if mapping is None:
+        unique_values = df_result[column].dropna().unique()
+        mapping = {val: idx for idx, val in enumerate(sorted(unique_values, key=str))}
+
+    df_result[f'{column}_encoded'] = df_result[column].map(mapping)
+
+    return df_result, mapping
+
+
+def one_hot_encode(df, columns, drop_first=False, prefix=None):
+    """
+    Apply one-hot encoding to categorical columns.
+
+    Args:
+        columns: list of columns to encode
+        drop_first: whether to drop the first category (avoid multicollinearity)
+        prefix: prefix for new column names (uses original column name if None)
+    """
+    return pd.get_dummies(df, columns=columns, drop_first=drop_first, prefix=prefix)
