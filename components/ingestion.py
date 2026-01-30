@@ -7,6 +7,8 @@ import streamlit as st
 import pandas as pd
 from utils.data_loader import load_data, load_sql, load_url, load_api, load_sample
 import os
+import requests
+from io import StringIO, BytesIO
 
 # Sample datasets for quick start
 SAMPLE_DATASETS = {
@@ -99,7 +101,7 @@ def auto_optimize_dtypes(df):
         if col_type == 'object':
             # Check if it's a date
             try:
-                df[col] = pd.to_datetime(df[col], errors='raise', infer_datetime_format=True)
+                df[col] = pd.to_datetime(df[col], errors='raise')
                 continue
             except:
                 pass
@@ -147,13 +149,16 @@ def render():
         render_url_upload()
 
     with tab3:
-        render_sql_connection()
+        render_api_upload()
 
     with tab4:
+        render_sql_connection()
+
+    with tab5:
         render_sample_datasets()
 
     # Data preview and info
-    if st.session_state['data'] is not None:
+    if st.session_state.get('data') is not None:
         render_data_preview()
 
 
@@ -230,57 +235,6 @@ def render_file_upload():
             except Exception as e:
                 st.error(f"Error loading file: {str(e)}")
 
-    # Tab 2: URL
-    with tab2:
-        st.subheader("Load from URL")
-        url = st.text_input("Enter Dataset URL", placeholder="https://example.com/data.csv")
-        file_type_url = st.selectbox("File Type", ['csv', 'json', 'excel'])
-
-        if st.button("Load from URL"):
-            if not url:
-                st.error("Please enter a URL.")
-            else:
-                try:
-                    with st.spinner("Fetching data..."):
-                        df = load_url(url, file_type_url)
-                        st.session_state['data'] = df
-                        st.session_state['file_meta'] = {
-                            'name': url.split('/')[-1] or "URL Dataset",
-                            'size': 0,
-                            'type': f"url_{file_type_url}"
-                        }
-                        st.success("Successfully loaded data from URL.")
-                except Exception as e:
-                    st.error(f"Error loading from URL: {e}")
-
-    # Tab 3: API
-    with tab3:
-        st.subheader("Load from API")
-        api_url = st.text_input("API Endpoint", placeholder="https://api.example.com/data")
-        json_key = st.text_input("JSON Key (optional)", help="Key to extract data from nested JSON (e.g. 'results' or 'data.items')")
-
-        if st.button("Load from API"):
-            if not api_url:
-                st.error("Please enter an API URL.")
-            else:
-                try:
-                    with st.spinner("Fetching API data..."):
-                        df = load_api(api_url, json_key=json_key if json_key else None)
-                        st.session_state['data'] = df
-                        st.session_state['file_meta'] = {
-                            'name': "API Data",
-                            'size': 0,
-                            'type': "api"
-                        }
-                        st.success("Successfully loaded data from API.")
-                except Exception as e:
-                    st.error(f"Error loading from API: {e}")
-
-    # Tab 4: SQL
-    with tab4:
-        st.subheader("Connect to SQL Database")
-        conn_string = st.text_input("Connection String (e.g., sqlite:///data.db)")
-        query = st.text_area("SQL Query", "SELECT * FROM my_table")
 
 def render_url_upload():
     st.info("Load data directly from a URL (CSV, JSON, Excel, or Parquet).")
@@ -302,62 +256,120 @@ def render_url_upload():
             if error:
                 st.error(error)
             else:
-                try:
-                    with st.spinner("Executing query..."):
-                        df = load_sql(conn_string, query)
-                        st.session_state['data'] = df
-                        st.session_state['file_meta'] = {
-                            'name': 'SQL Query Result',
-                            'size': 0,
-                            'type': 'sql'
-                        }
-                        st.success("Successfully loaded data from SQL.")
-                except Exception as e:
-                    st.error(f"Error loading from SQL: {e}")
+                if optimize_types:
+                    df = auto_optimize_dtypes(df)
 
-    # Tab 5: Sample Datasets
-    with tab5:
-        st.subheader("Sample Datasets")
-        dataset = st.selectbox("Select Dataset", ["Titanic", "Iris", "Housing", "Wine Quality"])
+                st.session_state['data'] = df
+                st.session_state['file_meta'] = {
+                    'name': url.split('/')[-1] or "URL Dataset",
+                    'size': 0,
+                    'type': "url"
+                }
+                st.success("Successfully loaded data from URL.")
+                st.rerun()
 
-        if st.button("Load Sample"):
+
+def render_api_upload():
+    st.subheader("Load from API")
+    api_url = st.text_input("API Endpoint", placeholder="https://api.example.com/data")
+    json_key = st.text_input("JSON Key (optional)", help="Key to extract data from nested JSON (e.g. 'results' or 'data.items')")
+
+    if st.button("Load from API"):
+        if not api_url:
+            st.error("Please enter an API URL.")
+        else:
             try:
-                with st.spinner(f"Loading {dataset}..."):
-                    # Map display name to key
-                    key_map = {
-                        "Titanic": "titanic",
-                        "Iris": "iris",
-                        "Housing": "housing",
-                        "Wine Quality": "wine"
-                    }
-                    df = load_sample(key_map[dataset])
+                with st.spinner("Fetching API data..."):
+                    df = load_api(api_url, json_key=json_key if json_key else None)
                     st.session_state['data'] = df
                     st.session_state['file_meta'] = {
-                        'name': f"{dataset} Sample",
+                        'name': "API Data",
                         'size': 0,
-                        'type': 'sample'
+                        'type': "api"
                     }
-                    st.success(f"Successfully loaded {dataset} dataset.")
+                    st.success("Successfully loaded data from API.")
+                    st.rerun()
             except Exception as e:
-                st.error(f"Error loading sample: {e}")
+                st.error(f"Error loading from API: {e}")
 
-    # Preview
-    if st.session_state['data'] is not None:
-        st.subheader("Data Preview")
+
+def render_sql_connection():
+    st.subheader("Connect to SQL Database")
+    conn_string = st.text_input("Connection String (e.g., sqlite:///data.db)")
+    query = st.text_area("SQL Query", "SELECT * FROM my_table")
+
+    if st.button("Load from SQL"):
+        if not conn_string:
+            st.error("Please provide connection string")
+        else:
+            try:
+                with st.spinner("Executing query..."):
+                    df = load_sql(conn_string, query)
+                    st.session_state['data'] = df
+                    st.session_state['file_meta'] = {
+                        'name': 'SQL Query Result',
+                        'size': 0,
+                        'type': 'sql'
+                    }
+                    st.success("Successfully loaded data from SQL.")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Error loading from SQL: {e}")
+
+
+def render_sample_datasets():
+    st.subheader("Sample Datasets")
+    dataset = st.selectbox("Select Dataset", ["Titanic", "Iris", "Housing", "Wine Quality"])
+
+    if st.button("Load Sample"):
+        try:
+            with st.spinner(f"Loading {dataset}..."):
+                # Map display name to key
+                key_map = {
+                    "Titanic": "titanic",
+                    "Iris": "iris",
+                    "Housing": "housing",
+                    "Wine Quality": "wine"
+                }
+                df = load_sample(key_map[dataset])
+                st.session_state['data'] = df
+                st.session_state['file_meta'] = {
+                    'name': f"{dataset} Sample",
+                    'size': 0,
+                    'type': 'sample'
+                }
+                st.success(f"Successfully loaded {dataset} dataset.")
+                st.rerun()
+        except Exception as e:
+            st.error(f"Error loading sample: {e}")
+
+
+def render_data_preview():
+    st.subheader("Data Preview")
+
+    if 'file_meta' in st.session_state and st.session_state['file_meta']:
         st.write(f"**File:** {st.session_state['file_meta']['name']}")
-        st.write(f"**Shape:** {st.session_state['data'].shape}")
 
-        with col2:
-            if st.button("Drop Rows with Any Missing"):
-                original_len = len(df)
-                st.session_state['data'] = df.dropna()
-                removed = original_len - len(st.session_state['data'])
-                st.success(f"Removed {removed} rows with missing values")
-                st.rerun()
+    df = st.session_state['data']
+    st.write(f"**Shape:** {df.shape}")
 
-        with col3:
-            if st.button("Reset Data"):
-                st.session_state['data'] = None
-                st.session_state['file_meta'] = None
-                st.success("Data reset")
-                st.rerun()
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Drop Rows with Any Missing"):
+            original_len = len(df)
+            st.session_state['data'] = df.dropna()
+            removed = original_len - len(st.session_state['data'])
+            st.success(f"Removed {removed} rows with missing values")
+            st.rerun()
+
+    with col2:
+        if st.button("Reset Data"):
+            st.session_state['data'] = None
+            st.session_state['file_meta'] = None
+            st.success("Data reset")
+            st.rerun()
+
+    st.dataframe(df.head())
+
+    summary = get_data_summary(df)
+    st.json(summary)
