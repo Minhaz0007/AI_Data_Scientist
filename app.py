@@ -427,16 +427,15 @@ from utils.db import init_db, save_project, load_projects, load_project_details
 
 # Navigation structure
 PAGES = {
-    "Data Pipeline": ["Data Ingestion", "Data Profiling", "Data Cleaning", "Transformation"],
-    "Data Science": ["Feature Engineering", "Predictive Modeling", "Time Series", "Advanced Analysis"],
-    "Analytics & AI": ["Analysis", "Visualization", "Dashboard", "AI Insights", "Chat"],
-    "Output": ["Reporting"]
+    "Conventional Data Analysis": ["Data Ingestion", "Data Profiling", "Data Cleaning", "Transformation", "Visualization", "Dashboard", "Reporting"],
+    "Conventional Data Science": ["Statistical Analysis", "Feature Engineering", "Predictive Modeling", "Time Series", "Advanced Analysis"],
+    "AI Features": ["AI Insights", "Chat"]
 }
 
 PAGE_ICONS = {
     "Data Ingestion": "📤", "Data Profiling": "📊", "Data Cleaning": "🧹", "Transformation": "🔄",
     "Feature Engineering": "⚙️", "Predictive Modeling": "🎯", "Time Series": "📈", "Advanced Analysis": "🧠",
-    "Analysis": "📉", "Visualization": "📊", "Dashboard": "🖥️", "AI Insights": "💡", "Chat": "💬",
+    "Statistical Analysis": "📉", "Visualization": "📊", "Dashboard": "🖥️", "AI Insights": "💡", "Chat": "💬",
     "Reporting": "📄"
 }
 
@@ -449,7 +448,7 @@ PAGE_DESC = {
     "Predictive Modeling": "Train and evaluate machine learning models for regression and classification",
     "Time Series": "Analyze trends, seasonality, and forecast future values",
     "Advanced Analysis": "Perform PCA, t-SNE visualization, anomaly detection, and text analysis",
-    "Analysis": "Run statistical tests, perform clustering, and detect outliers",
+    "Statistical Analysis": "Run statistical tests, perform clustering, and detect outliers",
     "Visualization": "Create custom interactive charts and get AI-suggested visualizations",
     "Dashboard": "Pin your favorite visualizations to a custom dashboard",
     "AI Insights": "Get comprehensive AI-powered analysis and recommendations",
@@ -543,7 +542,7 @@ elif page == "Time Series":
     timeseries.render()
 elif page == "Advanced Analysis":
     advanced_analysis.render()
-elif page == "Analysis":
+elif page == "Statistical Analysis":
     analysis.render()
 elif page == "Visualization":
     visualization.render()

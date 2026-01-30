@@ -523,8 +523,12 @@ class MLEngine:
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
-        tsne = TSNE(n_components=n_components, perplexity=min(perplexity, len(X)-1),
-                    n_iter=n_iter, random_state=42)
+        try:
+            tsne = TSNE(n_components=n_components, perplexity=min(perplexity, len(X)-1),
+                        n_iter=n_iter, random_state=42)
+        except TypeError:
+            tsne = TSNE(n_components=n_components, perplexity=min(perplexity, len(X)-1),
+                        max_iter=n_iter, random_state=42)
         X_tsne = tsne.fit_transform(X_scaled)
 
         tsne_cols = [f'tSNE{i+1}' for i in range(n_components)]

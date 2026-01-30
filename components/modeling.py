@@ -67,24 +67,27 @@ def render():
     st.markdown("---")
     st.subheader("Model Configuration")
 
-    col1, col2, col3 = st.columns(3)
+    with st.form("model_train_form"):
+        col1, col2, col3 = st.columns(3)
 
-    with col1:
-        if task_type == "Regression":
-            model_options = list(ml.get_regression_models().keys())
-        else:
-            model_options = list(ml.get_classification_models().keys())
+        with col1:
+            if task_type == "Regression":
+                model_options = list(ml.get_regression_models().keys())
+            else:
+                model_options = list(ml.get_classification_models().keys())
 
-        selected_model = st.selectbox("Select Model", model_options)
+            selected_model = st.selectbox("Select Model", model_options)
 
-    with col2:
-        test_size = st.slider("Test Set Size", 0.1, 0.4, 0.2, 0.05)
+        with col2:
+            test_size = st.slider("Test Set Size", 0.1, 0.4, 0.2, 0.05)
 
-    with col3:
-        run_automl = st.checkbox("Run AutoML (Compare All Models)", value=False)
+        with col3:
+            run_automl = st.checkbox("Run AutoML (Compare All Models)", value=False)
+
+        submitted = st.form_submit_button("Train Model", type="primary")
 
     # Training
-    if st.button("Train Model", type="primary"):
+    if submitted:
         with st.spinner("Training model..."):
             X = df[feature_cols]
             y = df[target_col]
