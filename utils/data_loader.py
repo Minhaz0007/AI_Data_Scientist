@@ -10,7 +10,11 @@ def _fix_mixed_types(df):
             # Check for mixed types and convert to string
             try:
                 # Try to infer better types first
-                df[col] = pd.to_numeric(df[col], errors='ignore')
+                try:
+                    df[col] = pd.to_numeric(df[col])
+                except (ValueError, TypeError):
+                    pass
+
                 if df[col].dtype == 'object':
                     # Still object, convert to string to avoid PyArrow issues
                     df[col] = df[col].astype(str).replace('nan', pd.NA)
