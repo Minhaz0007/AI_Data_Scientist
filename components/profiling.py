@@ -57,6 +57,6 @@ def render():
                 fig = px.histogram(df, x=selected_col, marginal="box")
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                fig = px.bar(df[selected_col].value_counts().reset_index(), x='index', y=selected_col)
+                fig = px.bar(df[selected_col].value_counts().reset_index(), x=selected_col, y='count')
                 fig.update_layout(xaxis_title=selected_col, yaxis_title="Count")
                 st.plotly_chart(fig, use_container_width=True)
