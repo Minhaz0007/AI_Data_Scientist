@@ -425,12 +425,14 @@ from components import ingestion, profiling, cleaning, transformation, analysis,
 from components import modeling, timeseries, feature_engineering, advanced_analysis, dashboard
 from utils.db import init_db, save_project, load_projects, load_project_details
 
-# Navigation structure
-PAGES = {
-    "Conventional Data Analysis": ["Data Ingestion", "Data Profiling", "Data Cleaning", "Transformation", "Visualization", "Dashboard", "Reporting"],
-    "Conventional Data Science": ["Statistical Analysis", "Feature Engineering", "Predictive Modeling", "Time Series", "Advanced Analysis"],
-    "AI Features": ["AI Insights", "Chat"]
-}
+# Navigation structure - all features in progression
+PAGES = [
+    "Data Ingestion", "Data Profiling", "Data Cleaning", "Transformation",
+    "Visualization", "Dashboard", "Reporting",
+    "Statistical Analysis", "Feature Engineering", "Predictive Modeling",
+    "Time Series", "Advanced Analysis",
+    "AI Insights", "Chat"
+]
 
 PAGE_ICONS = {
     "Data Ingestion": "📤", "Data Profiling": "📊", "Data Cleaning": "🧹", "Transformation": "🔄",
@@ -486,18 +488,16 @@ with st.sidebar:
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
     # Navigation
-    for section, pages in PAGES.items():
-        st.markdown(f'<p class="nav-header">{section}</p>', unsafe_allow_html=True)
-        for page in pages:
-            icon = PAGE_ICONS.get(page, "")
-            is_active = st.session_state.get('current_page') == page
+    for page in PAGES:
+        icon = PAGE_ICONS.get(page, "")
+        is_active = st.session_state.get('current_page') == page
 
-            if is_active:
-                st.markdown(f'<div class="nav-item nav-item-active">{icon} {page}</div>', unsafe_allow_html=True)
-            else:
-                if st.button(f"{icon} {page}", key=f"nav_{page}", use_container_width=True):
-                    st.session_state['current_page'] = page
-                    st.rerun()
+        if is_active:
+            st.markdown(f'<div class="nav-item nav-item-active">{icon} {page}</div>', unsafe_allow_html=True)
+        else:
+            if st.button(f"{icon} {page}", key=f"nav_{page}", use_container_width=True):
+                st.session_state['current_page'] = page
+                st.rerun()
 
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
 
