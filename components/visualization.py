@@ -11,9 +11,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def analyze_data_for_visualization(df):
+def suggest_charts(df):
     """Analyze data and suggest the best visualizations."""
-    suggestions = []
+    suggestions = {}
 
     numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
     categorical_cols = df.select_dtypes(include=['object', 'category']).columns.tolist()
