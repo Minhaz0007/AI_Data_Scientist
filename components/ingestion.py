@@ -5,6 +5,7 @@ Supports file upload, URL loading, SQL databases, sample datasets, and auto-dete
 
 import streamlit as st
 import pandas as pd
+import pyarrow as pa
 from utils.data_loader import load_data, load_sql, load_url, load_api, load_sample
 import os
 import requests
@@ -370,7 +371,11 @@ def render_data_preview():
             st.success("Data reset")
             st.rerun()
 
-    st.dataframe(df.head())
+    try:
+        st.dataframe(df.head())
+    except pa.ArrowInvalid:
+        st.warning("Displaying data as string due to mixed types.")
+        st.dataframe(df.head().astype(str))
 
     summary = get_data_summary(df)
     st.json(summary)
