@@ -423,7 +423,29 @@ if not check_password():
 # Import components
 from components import ingestion, profiling, cleaning, transformation, analysis, visualization, insights, chat, reporting
 from components import modeling, timeseries, feature_engineering, advanced_analysis, dashboard, workflow
-from utils.db import init_db, save_project, load_projects, load_project_details
+from components import groq_agent
+from utils.db import (
+    init_db, save_project, load_projects, load_project_details,
+    load_uploaded_files_list, load_uploaded_file_data
+)
+
+# Initialize database (creates tables if needed, uses SQLite by default)
+init_db()
+
+# Auto-load most recent file from database if no data in session
+if st.session_state.get('data') is None:
+    recent_files = load_uploaded_files_list()
+    if recent_files:
+        latest = recent_files[0]
+        df, name, ftype = load_uploaded_file_data(latest['id'])
+        if df is not None:
+            st.session_state['data'] = df
+            st.session_state['file_meta'] = {
+                'name': name,
+                'size': latest.get('file_size', 0),
+                'type': ftype,
+                'source': latest.get('source', 'database')
+            }
 
 # Navigation structure - all features in progression
 PAGES = [
@@ -505,15 +527,12 @@ with st.sidebar:
     # Compact settings
     with st.expander("⚙️ Settings", expanded=False):
         st.caption("**Project Management**")
-        if os.environ.get("DATABASE_URL"):
-            proj_name = st.text_input("Name", label_visibility="collapsed", placeholder="Project name...")
-            if st.button("💾 Save Project", use_container_width=True):
-                if st.session_state['data'] is not None and proj_name:
-                    summary = {"rows": len(st.session_state['data']), "cols": len(st.session_state['data'].columns)}
-                    if save_project(proj_name, summary, st.session_state.get('last_insights', '')):
-                        st.success("Saved!")
-        else:
-            st.caption("Set DATABASE_URL to enable")
+        proj_name = st.text_input("Name", label_visibility="collapsed", placeholder="Project name...")
+        if st.button("💾 Save Project", use_container_width=True):
+            if st.session_state['data'] is not None and proj_name:
+                summary = {"rows": len(st.session_state['data']), "cols": len(st.session_state['data'].columns)}
+                if save_project(proj_name, summary, st.session_state.get('last_insights', '')):
+                    st.success("Saved!")
 
     # Version
     st.caption(f"v{config['version']} • {'🌙 Dark' if st.session_state.get('dark_mode') else '☀️ Light'}")
@@ -557,3 +576,6 @@ elif page == "Reporting":
     reporting.render()
 elif page == "Workflow Automation":
     workflow.render()
+
+# Render Groq AI Assistant on every tab
+groq_agent.render_agent(page)
