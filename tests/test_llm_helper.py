@@ -1,8 +1,19 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from utils.llm_helper import get_ai_response, generate_insights_prompt
+import os
+import streamlit as st
+from utils.llm_helper import get_ai_response, generate_insights_prompt, get_available_provider, _clean_api_key
 
 class TestLLMHelper(unittest.TestCase):
+
+    def test_clean_api_key(self):
+        """Test the API key cleaning utility."""
+        self.assertEqual(_clean_api_key(" clean "), "clean")
+        self.assertEqual(_clean_api_key('"quoted"'), "quoted")
+        self.assertEqual(_clean_api_key("'quoted'"), "quoted")
+        self.assertEqual(_clean_api_key(' " mixed " '), "mixed")
+        self.assertEqual(_clean_api_key(""), "")
+        self.assertIsNone(_clean_api_key(None))
 
     def test_generate_insights_prompt(self):
         summary = "Rows: 100, Cols: 5"
@@ -43,6 +54,27 @@ class TestLLMHelper(unittest.TestCase):
     def test_missing_key(self):
         response = get_ai_response("prompt", "", "anthropic")
         self.assertIn("Error: API key is missing", response)
+
+    def test_get_available_provider_cleaning_secrets(self):
+        # We simulate st.secrets using a dict
+        secrets_mock = {"GROQ_API_KEY": " gsk_dirty_key "}
+
+        with patch('streamlit.secrets', secrets_mock):
+             # Also assume no other env vars are interfering
+             with patch.dict(os.environ, {}, clear=True):
+                 provider, key, model = get_available_provider()
+
+                 # It should skip anthropic/openai (missing) and find groq
+                 self.assertEqual(provider, 'groq')
+                 self.assertEqual(key, 'gsk_dirty_key')
+
+    def test_get_available_provider_cleaning_quotes(self):
+        secrets_mock = {"GROQ_API_KEY": "\"gsk_quoted_key\""}
+        with patch('streamlit.secrets', secrets_mock):
+             with patch.dict(os.environ, {}, clear=True):
+                 provider, key, model = get_available_provider()
+                 self.assertEqual(provider, 'groq')
+                 self.assertEqual(key, 'gsk_quoted_key')
 
 if __name__ == '__main__':
     unittest.main()
