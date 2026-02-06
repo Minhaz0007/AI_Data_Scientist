@@ -64,8 +64,7 @@ def apply_theme():
        We hide the text color and replace it with an SVG background.
        ═══════════════════════════════════════════════════════════ */
     [data-testid="stSidebarCollapseButton"] button,
-    [data-testid="collapsedControl"] button,
-    button[kind="header"] {
+    [data-testid="collapsedControl"] button {
         font-size: 0 !important;
         overflow: hidden !important;
     }
@@ -514,6 +513,38 @@ def apply_theme():
     }
     .toast-success { background: var(--success-bg); border: 1px solid rgba(22, 163, 74, 0.3); color: var(--success); }
     .toast-info { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.3); color: var(--accent); }
+
+    /* ─── Dropdown & Popover Fixes ─── */
+    /* Ensure dropdown menus have solid background and no transparency bleed-through */
+    div[data-baseweb="popover"] > div,
+    div[data-baseweb="menu"],
+    div[data-baseweb="select"] ul,
+    ul[data-testid="stSelectboxVirtualDropdown"] {
+        background-color: var(--bg-secondary) !important;
+        opacity: 1 !important;
+        z-index: 999999 !important;
+        box-shadow: var(--shadow-lg) !important;
+        border: 1px solid var(--border) !important;
+    }
+
+    /* Ensure options are visible and have contrast */
+    li[data-baseweb="option"],
+    li[role="option"] {
+        background-color: var(--bg-secondary) !important;
+        color: var(--text-primary) !important;
+    }
+
+    li[data-baseweb="option"]:hover,
+    li[role="option"]:hover,
+    li[aria-selected="true"] {
+        background-color: var(--bg-hover) !important;
+        color: var(--accent) !important;
+    }
+
+    /* Ensure select input background is solid */
+    div[data-baseweb="select"] > div {
+        background-color: var(--bg-secondary) !important;
+    }
 
     </style>
     """, unsafe_allow_html=True)
