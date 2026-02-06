@@ -1,37 +1,74 @@
+"""
+Enhanced AI Insights Component
+Features: One-click insights, friendly explanations, stored results, guided prompts.
+"""
+
 import streamlit as st
 import pandas as pd
 from utils.llm_helper import get_ai_response, generate_insights_prompt, get_available_provider, LLM_PROVIDERS
 from utils.data_processor import profile_data
 
-def render():
-    st.header("AI-Powered Insights")
 
+def render():
     if st.session_state['data'] is None:
-        st.warning("Please upload a dataset first.")
+        st.markdown("""
+        <div class="help-tip">
+            <strong>💡 AI Insights needs data</strong><br>
+            Upload a dataset first, then come back here. Our AI will read through your entire dataset
+            and write a comprehensive analysis with key findings and actionable recommendations.
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Go to Data Ingestion", type="primary"):
+            st.session_state['current_page'] = "Data Ingestion"
+            st.rerun()
         return
 
     df = st.session_state['data']
 
-    # Auto-detect available provider from secrets/environment
+    # Auto-detect available provider
     provider_code, api_key, selected_model = get_available_provider()
 
-    # Show provider status
+    # Provider status
     if provider_code:
         provider_name = LLM_PROVIDERS[provider_code]['name']
-        st.info(f"Using **{provider_name}** with model **{selected_model}**")
+        st.markdown(f"""
+        <div class="status-indicator status-saved" style="margin-bottom: 1rem;">
+            ✓ Connected to {provider_name} ({selected_model})
+        </div>
+        """, unsafe_allow_html=True)
     else:
-        st.error("No AI provider configured. Please add an API key (ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY) to your Streamlit secrets or environment variables.")
+        st.error("No AI provider configured. Please add an API key to your environment or Streamlit secrets.")
         return
 
-    # Token limit slider (simple configuration)
-    max_tokens = st.slider("Max Response Tokens", 1024, 8192, 4096)
+    # Configuration
+    with st.expander("Settings", expanded=False):
+        max_tokens = st.slider("Max Response Length", 1024, 8192, 4096,
+                               help="Higher values give more detailed analysis but take longer")
 
-    if st.button("Generate Comprehensive Insights"):
-        with st.spinner("Analyzing data and generating insights..."):
-            # Prepare summary
+    # Show previously generated insights
+    if st.session_state.get('last_insights'):
+        st.markdown("### Previous Analysis")
+        st.markdown(st.session_state['last_insights'])
+        st.markdown("---")
+
+    # Generate button
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        generate_btn = st.button(
+            "Generate AI Analysis" if not st.session_state.get('last_insights') else "Regenerate Analysis",
+            type="primary",
+            use_container_width=True
+        )
+    with col2:
+        if st.session_state.get('last_insights'):
+            if st.button("Clear Analysis", use_container_width=True):
+                st.session_state['last_insights'] = None
+                st.rerun()
+
+    if generate_btn:
+        with st.spinner("AI is analyzing your data... This may take a moment."):
             profile = profile_data(df)
 
-            # Comprehensive summary for LLM
             summary_dict = {
                 'rows': profile['rows'],
                 'columns': profile['columns'],
@@ -45,10 +82,22 @@ def render():
                 'top_correlations': _get_top_correlations(profile['correlation']) if profile['correlation'] else None
             }
 
-            # Sample data
             sample_data = df.head(10).to_markdown()
 
-            prompt = generate_insights_prompt(str(summary_dict), f"Sample Data:\n{sample_data}")
+            # Enhanced prompt for non-technical users
+            enhanced_prompt = (
+                "IMPORTANT: Write this analysis for someone who may NOT have a data science background. "
+                "Use plain, simple language. Explain technical concepts when you must use them. "
+                "Structure your response with clear sections:\n"
+                "1. Quick Summary (2-3 sentences overview)\n"
+                "2. Key Findings (5-7 bullet points of the most interesting things)\n"
+                "3. Data Quality (any issues to fix, in plain language)\n"
+                "4. Recommendations (specific next steps the user should take)\n"
+                "5. Interesting Patterns (correlations, trends, or anomalies)\n\n"
+                "Be friendly and encouraging. Avoid jargon.\n\n"
+            )
+
+            prompt = enhanced_prompt + generate_insights_prompt(str(summary_dict), f"Sample Data:\n{sample_data}")
 
             response = get_ai_response(
                 prompt,
@@ -61,11 +110,11 @@ def render():
             if "Error" in response:
                 st.error(response)
             else:
-                st.markdown("### Executive Summary")
+                st.markdown("### AI Analysis Results")
                 st.markdown(response)
-
-                # Store insights for report
                 st.session_state['last_insights'] = response
+                st.success("Analysis complete! Results have been saved and will be included in reports.")
+
 
 def _get_top_correlations(corr_dict, top_n=5):
     """Extract top correlations from correlation dictionary."""
@@ -77,12 +126,11 @@ def _get_top_correlations(corr_dict, top_n=5):
     for i, col1 in enumerate(keys):
         for col2 in keys[i+1:]:
             corr_value = corr_dict[col1].get(col2, 0)
-            if corr_value != 1.0:  # Skip self-correlations
+            if corr_value != 1.0:
                 correlations.append({
                     'columns': f"{col1} <-> {col2}",
                     'correlation': round(corr_value, 3)
                 })
 
-    # Sort by absolute correlation value
     correlations.sort(key=lambda x: abs(x['correlation']), reverse=True)
     return correlations[:top_n]

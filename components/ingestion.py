@@ -160,12 +160,23 @@ def _persist_data(df, file_name, file_type, file_size=0, source='file_upload'):
 
 
 def render():
-    st.header("Data Ingestion")
+    # Quick-start for new users (guided mode)
+    if st.session_state.get('guided_mode', True) and st.session_state.get('data') is None:
+        st.markdown("""
+        <div class="help-tip">
+            <strong>👋 Getting Started</strong><br>
+            Pick how you want to bring your data in. The easiest way is to <strong>upload a file</strong> from your computer,
+            or try a <strong>sample dataset</strong> to explore the app first!
+        </div>
+        """, unsafe_allow_html=True)
+        st.markdown("")
 
     # Show recent files section first
     render_recent_files()
 
-    tab1, tab2, tab3, tab4, tab5 = st.tabs(["File Upload", "URL", "API", "SQL Database", "Sample Datasets"])
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "📁 File Upload", "🔗 URL", "🌐 API", "🗄️ SQL Database", "📦 Sample Datasets"
+    ])
 
     # Tab 1: File Upload
     with tab1:
@@ -240,7 +251,7 @@ def render_recent_files():
 
 
 def render_file_upload():
-    st.info("Upload CSV, Excel (.xlsx, .xls, .xlsm), JSON, or Parquet files. No file size limits.")
+    st.markdown("**Drag and drop** your file below, or click **Browse files**. Supported: CSV, Excel, JSON, Parquet.")
 
     col1, col2 = st.columns([3, 1])
 
@@ -375,57 +386,97 @@ def render_sql_connection():
 
 
 def render_sample_datasets():
-    st.subheader("Sample Datasets")
-    dataset = st.selectbox("Select Dataset", ["Titanic", "Iris", "Housing", "Wine Quality"])
+    st.markdown("**Try the app instantly** with a pre-loaded dataset. Great for exploring features!")
+    st.markdown("")
 
-    if st.button("Load Sample"):
-        try:
-            with st.spinner(f"Loading {dataset}..."):
-                # Map display name to key
-                key_map = {
-                    "Titanic": "titanic",
-                    "Iris": "iris",
-                    "Housing": "housing",
-                    "Wine Quality": "wine"
-                }
-                df = load_sample(key_map[dataset])
-                _persist_data(df, f"{dataset} Sample", 'sample', source='sample')
-                st.success(f"Successfully loaded {dataset} dataset.")
-                st.rerun()
-        except Exception as e:
-            st.error(f"Error loading sample: {e}")
+    # Display datasets as cards
+    dataset_info = {
+        "Iris (Classification)": {"desc": "Flower measurements - great for learning classification", "rows": "150", "icon": "🌸"},
+        "Titanic (Classification)": {"desc": "Passenger survival data - predict who survived", "rows": "891", "icon": "🚢"},
+        "Tips (Regression)": {"desc": "Restaurant tipping data - predict tip amounts", "rows": "244", "icon": "🍽️"},
+        "Diamonds (Regression)": {"desc": "Diamond pricing data - predict diamond prices", "rows": "53,940", "icon": "💎"},
+        "Penguins (Classification)": {"desc": "Penguin species data - classify penguin types", "rows": "344", "icon": "🐧"},
+        "Flights (Time Series)": {"desc": "Monthly airline passengers - forecast trends", "rows": "144", "icon": "✈️"},
+        "Car Crashes (Analysis)": {"desc": "US car crash statistics - analyze safety patterns", "rows": "51", "icon": "🚗"},
+        "MPG (Regression)": {"desc": "Car fuel efficiency - predict miles per gallon", "rows": "398", "icon": "⛽"},
+    }
+
+    cols = st.columns(4)
+    for i, (name, info) in enumerate(dataset_info.items()):
+        with cols[i % 4]:
+            st.markdown(f"""
+            <div class="step-card" style="margin-bottom: 0.5rem; min-height: 120px;">
+                <div style="font-size: 1.3rem;">{info['icon']}</div>
+                <strong style="font-size: 0.85rem;">{name.split('(')[0].strip()}</strong>
+                <p style="color: var(--text-secondary); font-size: 0.75rem; margin: 4px 0;">{info['desc']}</p>
+                <span style="color: var(--text-muted); font-size: 0.7rem;">{info['rows']} rows</span>
+            </div>
+            """, unsafe_allow_html=True)
+            if st.button(f"Load {name.split('(')[0].strip()}", key=f"sample_{name}", use_container_width=True):
+                url = SAMPLE_DATASETS.get(name)
+                if url:
+                    try:
+                        with st.spinner(f"Loading {name}..."):
+                            df, error = load_from_url(url)
+                            if df is not None:
+                                _persist_data(df, f"{name.split('(')[0].strip()}.csv", 'csv', source='sample')
+                                st.success(f"Loaded {name}!")
+                                st.rerun()
+                            else:
+                                st.error(f"Error: {error}")
+                    except Exception as e:
+                        st.error(f"Error loading sample: {e}")
 
 
 def render_data_preview():
+    st.markdown("---")
     st.subheader("Data Preview")
 
-    if 'file_meta' in st.session_state and st.session_state['file_meta']:
-        st.write(f"**File:** {st.session_state['file_meta']['name']}")
-
     df = st.session_state['data']
-    st.write(f"**Shape:** {df.shape}")
+    summary = get_data_summary(df)
 
-    col1, col2 = st.columns(2)
+    # KPI row
+    kpi_cols = st.columns(5)
+    with kpi_cols[0]:
+        st.metric("Rows", f"{summary['rows']:,}")
+    with kpi_cols[1]:
+        st.metric("Columns", f"{summary['columns']}")
+    with kpi_cols[2]:
+        st.metric("Missing Values", f"{summary['missing_total']:,}")
+    with kpi_cols[3]:
+        st.metric("Duplicates", f"{summary['duplicates']:,}")
+    with kpi_cols[4]:
+        st.metric("Memory", f"{summary['memory_mb']:.1f} MB")
+
+    # Column types summary
+    type_cols = st.columns(3)
+    with type_cols[0]:
+        st.caption(f"**{summary['numeric_cols']}** numeric columns")
+    with type_cols[1]:
+        st.caption(f"**{summary['categorical_cols']}** text/category columns")
+    with type_cols[2]:
+        st.caption(f"**{summary['datetime_cols']}** date/time columns")
+
+    st.markdown("")
+
+    # Data table with controls
+    col1, col2, col3 = st.columns([2, 1, 1])
     with col1:
-        if st.button("Drop Rows with Any Missing"):
+        preview_rows = st.slider("Preview rows", 5, min(100, len(df)), 10, key="preview_rows")
+    with col2:
+        if st.button("Drop Missing Rows", help="Remove all rows that have any missing values"):
             original_len = len(df)
             st.session_state['data'] = df.dropna()
             removed = original_len - len(st.session_state['data'])
-            st.success(f"Removed {removed} rows with missing values")
+            st.success(f"Removed {removed} rows")
             st.rerun()
-
-    with col2:
-        if st.button("Reset Data"):
+    with col3:
+        if st.button("Clear Data", help="Remove the current dataset"):
             st.session_state['data'] = None
             st.session_state['file_meta'] = None
-            st.success("Data reset")
             st.rerun()
 
     try:
-        st.dataframe(df.head())
+        st.dataframe(df.head(preview_rows), use_container_width=True)
     except pa.ArrowInvalid:
-        st.warning("Displaying data as string due to mixed types.")
-        st.dataframe(df.head().astype(str))
-
-    summary = get_data_summary(df)
-    st.json(summary)
+        st.dataframe(df.head(preview_rows).astype(str), use_container_width=True)
