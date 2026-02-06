@@ -25,7 +25,7 @@ if 'data' not in st.session_state:
 if 'file_meta' not in st.session_state:
     st.session_state['file_meta'] = None
 if 'dark_mode' not in st.session_state:
-    st.session_state['dark_mode'] = True  # Default to dark mode for modern look
+    st.session_state['dark_mode'] = False  # Light mode only
 if 'current_page' not in st.session_state:
     st.session_state['current_page'] = "Data Ingestion"
 if 'dashboard_charts' not in st.session_state:
@@ -52,1111 +52,435 @@ if 'completed_steps' not in st.session_state:
 
 # ─── Modern Theme CSS ────────────────────────────────────────────────
 def apply_theme():
-    if st.session_state.get('dark_mode', True):
-        st.markdown("""
-        <style>
-        /* ═══════════════════════════════════════════════════════════
-           MODERN DARK THEME - Glassmorphism + Smooth Animations
-           ═══════════════════════════════════════════════════════════ */
-
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-        :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-tertiary: #1a1a2e;
-            --bg-card: rgba(26, 26, 46, 0.6);
-            --bg-glass: rgba(255, 255, 255, 0.03);
-            --bg-glass-hover: rgba(255, 255, 255, 0.06);
-            --bg-hover: rgba(99, 102, 241, 0.1);
-            --text-primary: #f0f0f5;
-            --text-secondary: #a0a0b8;
-            --text-muted: #6b6b80;
-            --accent: #6366f1;
-            --accent-light: #818cf8;
-            --accent-glow: rgba(99, 102, 241, 0.3);
-            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
-            --border: rgba(255, 255, 255, 0.08);
-            --border-light: rgba(255, 255, 255, 0.12);
-            --success: #22c55e;
-            --success-bg: rgba(34, 197, 94, 0.1);
-            --warning: #f59e0b;
-            --warning-bg: rgba(245, 158, 11, 0.1);
-            --error: #ef4444;
-            --error-bg: rgba(239, 68, 68, 0.1);
-            --info: #6366f1;
-            --info-bg: rgba(99, 102, 241, 0.1);
-            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.5);
-            --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.15);
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --radius-xl: 20px;
-            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-slow: 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        /* ─── Keyframe Animations ─── */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes fadeInLeft {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        @keyframes fadeInRight {
-            from { opacity: 0; transform: translateX(20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        @keyframes slideInUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        @keyframes scaleIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-5px); }
-        }
-
-        @keyframes ripple {
-            0% { transform: scale(0); opacity: 1; }
-            100% { transform: scale(4); opacity: 0; }
-        }
-
-        @keyframes borderGlow {
-            0%, 100% { border-color: rgba(99, 102, 241, 0.3); }
-            50% { border-color: rgba(99, 102, 241, 0.6); }
-        }
-
-        @keyframes successPop {
-            0% { transform: scale(0.8); opacity: 0; }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-
-        /* ─── Base App ─── */
-        .stApp, [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-            background: var(--bg-primary) !important;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        }
-
-        .stApp {
-            animation: fadeInUp 0.5s ease-out;
-        }
-
-        [data-testid="stAppViewContainer"] > .main {
-            animation: fadeInUp 0.4s ease-out 0.1s both;
-        }
-
-        /* ─── Sidebar ─── */
-        section[data-testid="stSidebar"] {
-            background: linear-gradient(180deg, var(--bg-secondary) 0%, #0d0d15 100%) !important;
-            border-right: 1px solid var(--border) !important;
-            transition: all var(--transition-normal);
-        }
-
-        section[data-testid="stSidebar"] > div {
-            background: transparent !important;
-        }
-
-        section[data-testid="stSidebar"] .stButton > button {
-            background: transparent !important;
-            color: var(--text-secondary) !important;
-            border: none !important;
-            text-align: left !important;
-            padding: 0.6rem 0.9rem !important;
-            font-weight: 400 !important;
-            font-size: 0.9rem !important;
-            justify-content: flex-start !important;
-            border-radius: var(--radius-sm) !important;
-            transition: all var(--transition-normal) !important;
-            position: relative;
-            overflow: hidden;
-            width: 100% !important;
-        }
-
-        section[data-testid="stSidebar"] .stButton > button:hover {
-            background: var(--bg-hover) !important;
-            color: var(--text-primary) !important;
-            transform: translateX(4px) !important;
-            padding-left: 1.1rem !important;
-        }
-
-        section[data-testid="stSidebar"] .stButton > button:active {
-            transform: translateX(2px) scale(0.98) !important;
-        }
-
-        /* ─── Typography ─── */
-        .stMarkdown, p, span, label, li, div {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
-        }
-
-        .stMarkdown p, p, span, label, li {
-            color: var(--text-primary) !important;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-            color: var(--text-primary) !important;
-            font-weight: 600 !important;
-        }
-
-        h1 { animation: fadeInDown 0.5s ease-out; }
-        h2 { animation: fadeInDown 0.4s ease-out 0.05s both; }
-        h3 { animation: fadeInDown 0.3s ease-out 0.1s both; }
-
-        /* ─── Navigation Styles ─── */
-        .nav-header {
-            color: var(--text-muted) !important;
-            font-size: 0.65rem !important;
-            font-weight: 700 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.15em !important;
-            padding: 1rem 0.5rem 0.4rem 0.9rem !important;
-            margin: 0 !important;
-        }
-
-        .nav-item-active {
-            background: var(--accent-glow) !important;
-            border-left: 3px solid var(--accent) !important;
-            color: var(--accent-light) !important;
-            padding: 0.6rem 0.9rem !important;
-            margin: 2px 0 !important;
-            border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
-            font-weight: 500 !important;
-            font-size: 0.9rem !important;
-            animation: fadeInLeft 0.3s ease-out;
-            backdrop-filter: blur(10px);
-            box-shadow: inset 0 0 20px rgba(99, 102, 241, 0.1);
-        }
-
-        /* ─── Cards & Containers ─── */
-        .glass-card {
-            background: var(--bg-card) !important;
-            backdrop-filter: blur(20px) !important;
-            -webkit-backdrop-filter: blur(20px) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-lg) !important;
-            padding: 1.5rem !important;
-            box-shadow: var(--shadow-md) !important;
-            transition: all var(--transition-normal) !important;
-            animation: scaleIn 0.4s ease-out;
-        }
-
-        .glass-card:hover {
-            border-color: var(--border-light) !important;
-            box-shadow: var(--shadow-lg), var(--shadow-glow) !important;
-            transform: translateY(-2px) !important;
-        }
-
-        /* ─── Buttons ─── */
-        [data-testid="stAppViewContainer"] .stButton > button {
-            border-radius: var(--radius-md) !important;
-            transition: all var(--transition-normal) !important;
-            font-weight: 500 !important;
-            font-family: 'Inter', sans-serif !important;
-            position: relative;
-            overflow: hidden;
-        }
-
-        [data-testid="stAppViewContainer"] .stButton > button:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: var(--shadow-md) !important;
-        }
-
-        [data-testid="stAppViewContainer"] .stButton > button:active {
-            transform: translateY(0px) scale(0.98) !important;
-        }
-
-        /* Primary buttons */
-        [data-testid="stAppViewContainer"] .stButton > button[kind="primary"],
-        [data-testid="stAppViewContainer"] .stButton > button[data-testid="baseButton-primary"] {
-            background: var(--accent-gradient) !important;
-            background-size: 200% 200% !important;
-            animation: gradientShift 3s ease infinite !important;
-            color: white !important;
-            border: none !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.02em;
-            box-shadow: 0 4px 15px var(--accent-glow) !important;
-        }
-
-        [data-testid="stAppViewContainer"] .stButton > button[kind="primary"]:hover,
-        [data-testid="stAppViewContainer"] .stButton > button[data-testid="baseButton-primary"]:hover {
-            box-shadow: 0 6px 25px rgba(99, 102, 241, 0.4) !important;
-            transform: translateY(-3px) !important;
-        }
-
-        /* Secondary buttons */
-        [data-testid="stAppViewContainer"] .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]) {
-            background: var(--bg-glass) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border) !important;
-            backdrop-filter: blur(10px) !important;
-        }
-
-        [data-testid="stAppViewContainer"] .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]):hover {
-            background: var(--bg-glass-hover) !important;
-            border-color: var(--accent) !important;
-            color: var(--accent-light) !important;
-        }
-
-        /* ─── Input Fields ─── */
-        .stTextInput > div > div > input,
-        .stNumberInput > div > div > input,
-        .stTextArea > div > div > textarea,
-        .stSelectbox > div > div,
-        .stMultiSelect > div > div > div {
-            background: var(--bg-glass) !important;
-            color: var(--text-primary) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-md) !important;
-            transition: all var(--transition-normal) !important;
-            backdrop-filter: blur(10px) !important;
-            font-family: 'Inter', sans-serif !important;
-        }
-
-        .stSelectbox > div > div > div[data-baseweb="select"] > div {
-            color: var(--text-primary) !important;
-        }
-
-        ul[data-baseweb="menu"] li {
-            background-color: var(--bg-tertiary) !important;
-            color: var(--text-primary) !important;
-            transition: all var(--transition-fast) !important;
-        }
-
-        ul[data-baseweb="menu"] li:hover {
-            background-color: var(--bg-hover) !important;
-        }
-
-        .stTextInput > div > div > input:focus,
-        .stTextArea > div > div > textarea:focus,
-        .stSelectbox > div > div:focus-within {
-            border-color: var(--accent) !important;
-            box-shadow: 0 0 0 3px var(--accent-glow) !important;
-        }
-
-        /* ─── Chat Input ─── */
-        [data-testid="stChatInput"] {
-            border-radius: var(--radius-lg) !important;
-        }
-
-        [data-testid="stChatInput"] textarea {
-            background: var(--bg-glass) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-lg) !important;
-            color: var(--text-primary) !important;
-            transition: all var(--transition-normal) !important;
-        }
-
-        [data-testid="stChatInput"] textarea:focus {
-            border-color: var(--accent) !important;
-            box-shadow: 0 0 0 3px var(--accent-glow) !important;
-        }
-
-        /* ─── Chat Messages ─── */
-        [data-testid="stChatMessage"] {
-            background: var(--bg-glass) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-lg) !important;
-            padding: 1rem !important;
-            animation: fadeInUp 0.3s ease-out !important;
-            transition: all var(--transition-normal) !important;
-        }
-
-        [data-testid="stChatMessage"]:hover {
-            border-color: var(--border-light) !important;
-        }
-
-        /* ─── DataFrame ─── */
-        [data-testid="stDataFrame"] {
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-md) !important;
-            overflow: hidden !important;
-            animation: fadeInUp 0.4s ease-out;
-        }
-
-        /* ─── Metrics ─── */
-        [data-testid="stMetric"] {
-            background: var(--bg-glass) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-md) !important;
-            padding: 1rem !important;
-            transition: all var(--transition-normal) !important;
-        }
-
-        [data-testid="stMetric"]:hover {
-            border-color: var(--accent) !important;
-            box-shadow: var(--shadow-glow) !important;
-            transform: translateY(-2px) !important;
-        }
-
-        [data-testid="stMetricValue"] {
-            color: var(--accent-light) !important;
-            font-weight: 700 !important;
-        }
-
-        [data-testid="stMetricLabel"] {
-            color: var(--text-secondary) !important;
-        }
-
-        /* ─── Tabs ─── */
-        .stTabs [data-baseweb="tab-list"] {
-            background: transparent !important;
-            border-bottom: 1px solid var(--border) !important;
-            gap: 0 !important;
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            color: var(--text-secondary) !important;
-            padding: 0.75rem 1.2rem !important;
-            transition: all var(--transition-normal) !important;
-            border-radius: var(--radius-sm) var(--radius-sm) 0 0 !important;
-            font-weight: 500 !important;
-        }
-
-        .stTabs [data-baseweb="tab"]:hover {
-            color: var(--text-primary) !important;
-            background: var(--bg-glass) !important;
-        }
-
-        .stTabs [aria-selected="true"] {
-            color: var(--accent-light) !important;
-            border-bottom: 2px solid var(--accent) !important;
-            background: var(--bg-glass) !important;
-        }
-
-        /* ─── Expander ─── */
-        .streamlit-expanderHeader {
-            background: var(--bg-glass) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-md) !important;
-            color: var(--text-primary) !important;
-            transition: all var(--transition-normal) !important;
-            font-weight: 500 !important;
-        }
-
-        .streamlit-expanderHeader:hover {
-            border-color: var(--accent) !important;
-            background: var(--bg-glass-hover) !important;
-        }
-
-        details[open] .streamlit-expanderHeader {
-            border-color: var(--accent) !important;
-        }
-
-        .streamlit-expanderContent {
-            border: 1px solid var(--border) !important;
-            border-top: none !important;
-            border-radius: 0 0 var(--radius-md) var(--radius-md) !important;
-            background: var(--bg-glass) !important;
-        }
-
-        /* ─── File Uploader ─── */
-        [data-testid="stFileUploadDropzone"],
-        [data-testid="stFileUploader"] section {
-            background: var(--bg-glass) !important;
-            border: 2px dashed var(--border-light) !important;
-            border-radius: var(--radius-lg) !important;
-            transition: all var(--transition-normal) !important;
-        }
-
-        [data-testid="stFileUploadDropzone"]:hover,
-        [data-testid="stFileUploader"] section:hover {
-            border-color: var(--accent) !important;
-            background: var(--bg-hover) !important;
-            animation: borderGlow 2s ease infinite;
-        }
-
-        [data-testid="stFileUploadDropzone"] *,
-        [data-testid="stFileUploader"] *,
-        [data-testid="stFileUploader"] section * {
-            color: #ffffff !important;
-        }
-
-        [data-testid="stFileUploadDropzone"] small,
-        [data-testid="stFileUploader"] section small {
-            color: var(--text-secondary) !important;
-        }
-
-        [data-testid="stFileUploadDropzone"] svg,
-        [data-testid="stFileUploader"] section svg {
-            stroke: var(--text-secondary) !important;
-        }
-
-        [data-testid="stFileUploadDropzone"] button,
-        [data-testid="stFileUploader"] section button {
-            background: var(--bg-tertiary) !important;
-            color: #ffffff !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-sm) !important;
-            transition: all var(--transition-normal) !important;
-        }
-
-        [data-testid="stFileUploadDropzone"] button:hover,
-        [data-testid="stFileUploader"] section button:hover {
-            background: var(--accent) !important;
-            border-color: var(--accent) !important;
-            transform: scale(1.02) !important;
-        }
-
-        /* ─── Alert Boxes ─── */
-        .stAlert {
-            border-radius: var(--radius-md) !important;
-            animation: fadeInUp 0.3s ease-out !important;
-        }
-
-        [data-testid="stAlert"] > div[role="alert"] {
-            border-radius: var(--radius-md) !important;
-        }
-
-        /* ─── Progress Bar ─── */
-        .stProgress > div > div > div {
-            background: var(--accent-gradient) !important;
-            border-radius: 20px !important;
-            transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        }
-
-        /* ─── Scrollbar ─── */
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 10px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
-        }
-
-        /* ─── Tooltips ─── */
-        [data-testid="stTooltipIcon"] {
-            color: var(--accent) !important;
-            transition: all var(--transition-fast) !important;
-        }
-
-        [data-testid="stTooltipIcon"]:hover {
-            color: var(--accent-light) !important;
-            transform: scale(1.2) !important;
-        }
-
-        /* ─── Custom Components ─── */
-        .page-desc {
-            color: var(--text-secondary) !important;
-            font-size: 0.95rem;
-            animation: fadeInUp 0.4s ease-out 0.15s both;
-        }
-
-        .divider {
-            height: 1px;
-            background: var(--border);
-            margin: 0.75rem 0;
-        }
-
-        .status-indicator {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            animation: fadeInUp 0.3s ease-out;
-        }
-
-        .status-saved {
-            background: var(--success-bg);
-            color: var(--success);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-        }
-
-        .status-saving {
-            background: var(--warning-bg);
-            color: var(--warning);
-            border: 1px solid rgba(245, 158, 11, 0.2);
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-
-        .status-error {
-            background: var(--error-bg);
-            color: var(--error);
-            border: 1px solid rgba(239, 68, 68, 0.2);
-        }
-
-        /* ─── Onboarding & Help ─── */
-        .welcome-banner {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(139, 92, 246, 0.1) 100%);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: var(--radius-xl);
-            padding: 2rem;
-            text-align: center;
-            animation: scaleIn 0.5s ease-out;
-        }
-
-        .step-card {
-            background: var(--bg-glass);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1.2rem;
-            transition: all var(--transition-normal);
-            cursor: pointer;
-        }
-
-        .step-card:hover {
-            border-color: var(--accent);
-            background: var(--bg-hover);
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-glow);
-        }
-
-        .step-card-completed {
-            border-color: var(--success) !important;
-            background: var(--success-bg) !important;
-        }
-
-        .step-number {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: var(--accent-gradient);
-            color: white;
-            font-weight: 700;
-            font-size: 0.85rem;
-            margin-right: 10px;
-        }
-
-        .step-number-completed {
-            background: var(--success) !important;
-        }
-
-        .help-tip {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
-            border: 1px solid rgba(99, 102, 241, 0.15);
-            border-radius: var(--radius-md);
-            padding: 1rem 1.2rem;
-            margin: 0.5rem 0;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            animation: fadeInUp 0.3s ease-out;
-        }
-
-        .help-tip strong {
-            color: var(--accent-light) !important;
-        }
-
-        /* ─── KPI Cards ─── */
-        .kpi-card {
-            background: var(--bg-card);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1.5rem;
-            text-align: center;
-            transition: all var(--transition-normal);
-            animation: fadeInUp 0.4s ease-out;
-        }
-
-        .kpi-card:hover {
-            border-color: var(--accent);
-            box-shadow: var(--shadow-glow);
-            transform: translateY(-3px);
-        }
-
-        .kpi-value {
-            font-size: 2rem;
-            font-weight: 700;
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .kpi-label {
-            color: var(--text-secondary);
-            font-size: 0.85rem;
-            font-weight: 500;
-            margin-top: 0.25rem;
-        }
-
-        .kpi-delta {
-            font-size: 0.75rem;
-            margin-top: 0.25rem;
-        }
-
-        .kpi-delta-positive { color: var(--success); }
-        .kpi-delta-negative { color: var(--error); }
-
-        /* ─── Progress Tracker ─── */
-        .progress-tracker {
-            display: flex;
-            justify-content: space-between;
-            padding: 1rem 0;
-            position: relative;
-        }
-
-        .progress-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            flex: 1;
-            position: relative;
-            z-index: 1;
-        }
-
-        .progress-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: var(--border);
-            transition: all var(--transition-normal);
-        }
-
-        .progress-dot-active {
-            background: var(--accent);
-            box-shadow: 0 0 10px var(--accent-glow);
-            animation: pulse 2s ease-in-out infinite;
-        }
-
-        .progress-dot-completed {
-            background: var(--success);
-        }
-
-        /* ─── Auto-save Indicator ─── */
-        .autosave-indicator {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 500;
-            z-index: 1000;
-            animation: slideInUp 0.3s ease-out;
-            backdrop-filter: blur(20px);
-        }
-
-        /* ─── Notification Toast ─── */
-        .toast-notification {
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            padding: 12px 20px;
-            border-radius: var(--radius-md);
-            font-size: 0.85rem;
-            z-index: 1001;
-            animation: slideInUp 0.3s ease-out;
-            backdrop-filter: blur(20px);
-            max-width: 350px;
-        }
-
-        .toast-success {
-            background: var(--success-bg);
-            border: 1px solid rgba(34, 197, 94, 0.3);
-            color: var(--success);
-        }
-
-        .toast-info {
-            background: var(--info-bg);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            color: var(--accent-light);
-        }
-
-        /* ─── Stagger Animation for Lists ─── */
-        .stColumn:nth-child(1) { animation: fadeInUp 0.3s ease-out 0.05s both; }
-        .stColumn:nth-child(2) { animation: fadeInUp 0.3s ease-out 0.1s both; }
-        .stColumn:nth-child(3) { animation: fadeInUp 0.3s ease-out 0.15s both; }
-        .stColumn:nth-child(4) { animation: fadeInUp 0.3s ease-out 0.2s both; }
-        .stColumn:nth-child(5) { animation: fadeInUp 0.3s ease-out 0.25s both; }
-
-        /* ─── Spinner ─── */
-        .stSpinner > div {
-            border-color: var(--accent) !important;
-        }
-
-        /* ─── Slider ─── */
-        .stSlider > div > div > div > div {
-            background: var(--accent) !important;
-        }
-
-        /* ─── Checkbox & Radio ─── */
-        .stCheckbox label span,
-        .stRadio label span {
-            color: var(--text-primary) !important;
-        }
-
-        /* ─── Sidebar data info card ─── */
-        .data-info-card {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.05) 100%);
-            border: 1px solid rgba(99, 102, 241, 0.15);
-            border-radius: var(--radius-md);
-            padding: 0.8rem;
-            margin: 0.5rem 0;
-        }
-
-        /* ─── Guided Mode Banner ─── */
-        .guided-banner {
-            background: linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(99, 102, 241, 0.08) 100%);
-            border: 1px solid rgba(34, 197, 94, 0.15);
-            border-radius: var(--radius-md);
-            padding: 0.75rem 1rem;
-            font-size: 0.85rem;
-            color: var(--text-secondary);
-            animation: fadeInDown 0.3s ease-out;
-        }
-
-        </style>
-        """, unsafe_allow_html=True)
-    else:
-        # ─── Light Theme ───
-        st.markdown("""
-        <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-
-        :root {
-            --bg-primary: #f8f9fc;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f0f2f8;
-            --bg-card: rgba(255, 255, 255, 0.8);
-            --bg-glass: rgba(255, 255, 255, 0.6);
-            --bg-glass-hover: rgba(255, 255, 255, 0.8);
-            --bg-hover: rgba(99, 102, 241, 0.06);
-            --text-primary: #1a1a2e;
-            --text-secondary: #64648c;
-            --text-muted: #9898b0;
-            --accent: #6366f1;
-            --accent-light: #4f46e5;
-            --accent-glow: rgba(99, 102, 241, 0.15);
-            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
-            --border: rgba(0, 0, 0, 0.08);
-            --border-light: rgba(0, 0, 0, 0.12);
-            --success: #16a34a;
-            --success-bg: rgba(22, 163, 74, 0.08);
-            --warning: #d97706;
-            --warning-bg: rgba(217, 119, 6, 0.08);
-            --error: #dc2626;
-            --error-bg: rgba(220, 38, 38, 0.08);
-            --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
-            --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-            --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
-            --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.1);
-            --radius-sm: 8px;
-            --radius-md: 12px;
-            --radius-lg: 16px;
-            --radius-xl: 20px;
-            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes fadeInDown {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes fadeInLeft {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        @keyframes scaleIn {
-            from { transform: scale(0.9); opacity: 0; }
-            to { transform: scale(1); opacity: 1; }
-        }
-
-        @keyframes gradientShift {
-            0% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-            100% { background-position: 0% 50%; }
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        @keyframes borderGlow {
-            0%, 100% { border-color: rgba(99, 102, 241, 0.3); }
-            50% { border-color: rgba(99, 102, 241, 0.6); }
-        }
-
-        @keyframes slideInUp {
-            from { transform: translateY(100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important; }
-
-        .stApp { animation: fadeInUp 0.5s ease-out; }
-        h1 { animation: fadeInDown 0.5s ease-out; }
-        h2 { animation: fadeInDown 0.4s ease-out 0.05s both; }
-
-        .stApp, [data-testid="stAppViewContainer"] {
-            background: var(--bg-primary) !important;
-        }
-
-        section[data-testid="stSidebar"] {
-            background: var(--bg-secondary) !important;
-            border-right: 1px solid var(--border) !important;
-        }
-
-        section[data-testid="stSidebar"] > div {
-            background: transparent !important;
-        }
-
-        .nav-header {
-            color: var(--text-muted) !important;
-            font-size: 0.65rem !important;
-            font-weight: 700 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.15em !important;
-            padding: 1rem 0.5rem 0.4rem 0.9rem !important;
-        }
-
-        .nav-item-active {
-            background: var(--accent-glow) !important;
-            border-left: 3px solid var(--accent) !important;
-            color: var(--accent) !important;
-            padding: 0.6rem 0.9rem !important;
-            border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
-            font-weight: 500 !important;
-            font-size: 0.9rem !important;
-            animation: fadeInLeft 0.3s ease-out;
-        }
-
-        section[data-testid="stSidebar"] .stButton > button {
-            background: transparent !important;
-            color: var(--text-secondary) !important;
-            border: none !important;
-            text-align: left !important;
-            justify-content: flex-start !important;
-            border-radius: var(--radius-sm) !important;
-            transition: all var(--transition-normal) !important;
-            font-size: 0.9rem !important;
-        }
-
-        section[data-testid="stSidebar"] .stButton > button:hover {
-            background: var(--bg-hover) !important;
-            color: var(--text-primary) !important;
-            transform: translateX(4px) !important;
-        }
-
-        [data-testid="stAppViewContainer"] .stButton > button {
-            border-radius: var(--radius-md) !important;
-            transition: all var(--transition-normal) !important;
-            font-weight: 500 !important;
-        }
-
-        [data-testid="stAppViewContainer"] .stButton > button:hover {
-            transform: translateY(-2px) !important;
-            box-shadow: var(--shadow-md) !important;
-        }
-
-        [data-testid="stAppViewContainer"] .stButton > button[kind="primary"],
-        [data-testid="stAppViewContainer"] .stButton > button[data-testid="baseButton-primary"] {
-            background: var(--accent-gradient) !important;
-            background-size: 200% 200% !important;
-            animation: gradientShift 3s ease infinite !important;
-            color: white !important;
-            border: none !important;
-            font-weight: 600 !important;
-            box-shadow: 0 4px 15px var(--accent-glow) !important;
-        }
-
-        .stTextInput > div > div > input,
-        .stNumberInput > div > div > input,
-        .stTextArea > div > div > textarea {
-            border-radius: var(--radius-md) !important;
-            border: 1px solid var(--border) !important;
-            transition: all var(--transition-normal) !important;
-        }
-
-        .stTextInput > div > div > input:focus,
-        .stTextArea > div > div > textarea:focus {
-            border-color: var(--accent) !important;
-            box-shadow: 0 0 0 3px var(--accent-glow) !important;
-        }
-
-        [data-testid="stMetric"] {
-            background: var(--bg-secondary) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-md) !important;
-            padding: 1rem !important;
-            transition: all var(--transition-normal) !important;
-            box-shadow: var(--shadow-sm) !important;
-        }
-
-        [data-testid="stMetric"]:hover {
-            border-color: var(--accent) !important;
-            box-shadow: var(--shadow-glow) !important;
-            transform: translateY(-2px) !important;
-        }
-
-        [data-testid="stMetricValue"] { color: var(--accent) !important; font-weight: 700 !important; }
-
-        .stTabs [data-baseweb="tab-list"] {
-            border-bottom: 1px solid var(--border) !important;
-        }
-
-        .stTabs [data-baseweb="tab"] {
-            color: var(--text-secondary) !important;
-            transition: all var(--transition-normal) !important;
-            font-weight: 500 !important;
-        }
-
-        .stTabs [aria-selected="true"] {
-            color: var(--accent) !important;
-            border-bottom: 2px solid var(--accent) !important;
-        }
-
-        [data-testid="stFileUploadDropzone"]:hover {
-            border-color: var(--accent) !important;
-            animation: borderGlow 2s ease infinite;
-        }
-
-        .stAlert { border-radius: var(--radius-md) !important; }
-
-        [data-testid="stChatMessage"] {
-            border-radius: var(--radius-lg) !important;
-            animation: fadeInUp 0.3s ease-out !important;
-        }
-
-        .page-desc { color: var(--text-secondary) !important; font-size: 0.95rem; animation: fadeInUp 0.4s ease-out 0.15s both; }
-        .divider { height: 1px; background: var(--border); margin: 0.75rem 0; }
-
-        .welcome-banner {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
-            border: 1px solid rgba(99, 102, 241, 0.15);
-            border-radius: var(--radius-xl);
-            padding: 2rem;
-            text-align: center;
-            animation: scaleIn 0.5s ease-out;
-        }
-
-        .step-card {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: var(--radius-lg);
-            padding: 1.2rem;
-            transition: all var(--transition-normal);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .step-card:hover {
-            border-color: var(--accent);
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-glow);
-        }
-
-        .step-number {
-            display: inline-flex; align-items: center; justify-content: center;
-            width: 32px; height: 32px; border-radius: 50%;
-            background: var(--accent-gradient); color: white;
-            font-weight: 700; font-size: 0.85rem; margin-right: 10px;
-        }
-
-        .help-tip {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.03) 100%);
-            border: 1px solid rgba(99, 102, 241, 0.1);
-            border-radius: var(--radius-md);
-            padding: 1rem 1.2rem;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            animation: fadeInUp 0.3s ease-out;
-        }
-
-        .kpi-card {
-            background: var(--bg-secondary); border: 1px solid var(--border);
-            border-radius: var(--radius-lg); padding: 1.5rem; text-align: center;
-            box-shadow: var(--shadow-sm); transition: all var(--transition-normal);
-        }
-        .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); border-color: var(--accent); }
-        .kpi-value { font-size: 2rem; font-weight: 700; color: var(--accent); }
-        .kpi-label { color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; }
-
-        .data-info-card {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.03) 100%);
-            border: 1px solid rgba(99, 102, 241, 0.1);
-            border-radius: var(--radius-md);
-            padding: 0.8rem;
-        }
-
-        .guided-banner {
-            background: linear-gradient(135deg, rgba(22, 163, 74, 0.06) 0%, rgba(99, 102, 241, 0.06) 100%);
-            border: 1px solid rgba(22, 163, 74, 0.12);
-            border-radius: var(--radius-md);
-            padding: 0.75rem 1rem;
-            font-size: 0.85rem;
-            animation: fadeInDown 0.3s ease-out;
-        }
-
-        .status-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
-        .status-saved { background: var(--success-bg); color: var(--success); border: 1px solid rgba(22, 163, 74, 0.15); }
-        .status-saving { background: var(--warning-bg); color: var(--warning); animation: pulse 1.5s infinite; }
-
-        .stColumn:nth-child(1) { animation: fadeInUp 0.3s ease-out 0.05s both; }
-        .stColumn:nth-child(2) { animation: fadeInUp 0.3s ease-out 0.1s both; }
-        .stColumn:nth-child(3) { animation: fadeInUp 0.3s ease-out 0.15s both; }
-        .stColumn:nth-child(4) { animation: fadeInUp 0.3s ease-out 0.2s both; }
-        .stColumn:nth-child(5) { animation: fadeInUp 0.3s ease-out 0.25s both; }
-
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
-
-        </style>
-        """, unsafe_allow_html=True)
+    # ─── Light-Only Theme with Overlay Fix ───
+    st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+    /* ═══════════════════════════════════════════════════════════
+       FIX: Hide Streamlit sidebar collapse button icon text leak
+       The Material Icons ligature text (keyboard_double_arrow_left)
+       renders as raw text when the font fails to load.
+       ═══════════════════════════════════════════════════════════ */
+    [data-testid="stSidebarCollapseButton"] button,
+    [data-testid="collapsedControl"] button,
+    button[kind="header"] {
+        font-size: 0 !important;
+        overflow: hidden !important;
+    }
+    [data-testid="stSidebarCollapseButton"] button span,
+    [data-testid="collapsedControl"] button span,
+    [data-testid="stSidebarCollapseButton"] button [data-testid="stIconMaterial"],
+    [data-testid="collapsedControl"] button [data-testid="stIconMaterial"] {
+        font-size: 1.25rem !important;
+        overflow: hidden !important;
+        display: inline-flex !important;
+        width: 24px !important;
+        height: 24px !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    /* Hide any raw text in the collapse button area */
+    [data-testid="stSidebarCollapseButton"],
+    [data-testid="collapsedControl"] {
+        overflow: hidden !important;
+        max-height: 48px !important;
+    }
+    /* Force the sidebar collapse icon to use SVG fallback */
+    [data-testid="stSidebarCollapseButton"] button::before,
+    [data-testid="collapsedControl"] button::before {
+        content: "" !important;
+    }
+    [data-testid="stSidebarCollapseButton"] button svg,
+    [data-testid="collapsedControl"] button svg {
+        width: 20px !important;
+        height: 20px !important;
+    }
+    /* Ensure no text overflow from the sidebar nav button area */
+    [data-testid="stSidebarNavLink"] span,
+    [data-testid="stSidebarCollapseButton"] *,
+    [data-testid="collapsedControl"] * {
+        text-overflow: ellipsis !important;
+        overflow: hidden !important;
+        white-space: nowrap !important;
+    }
+
+    :root {
+        --bg-primary: #f8f9fc;
+        --bg-secondary: #ffffff;
+        --bg-tertiary: #f0f2f8;
+        --bg-card: rgba(255, 255, 255, 0.8);
+        --bg-glass: rgba(255, 255, 255, 0.6);
+        --bg-glass-hover: rgba(255, 255, 255, 0.8);
+        --bg-hover: rgba(99, 102, 241, 0.06);
+        --text-primary: #1a1a2e;
+        --text-secondary: #64648c;
+        --text-muted: #9898b0;
+        --accent: #6366f1;
+        --accent-light: #4f46e5;
+        --accent-glow: rgba(99, 102, 241, 0.15);
+        --accent-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #a78bfa 100%);
+        --border: rgba(0, 0, 0, 0.08);
+        --border-light: rgba(0, 0, 0, 0.12);
+        --success: #16a34a;
+        --success-bg: rgba(22, 163, 74, 0.08);
+        --warning: #d97706;
+        --warning-bg: rgba(217, 119, 6, 0.08);
+        --error: #dc2626;
+        --error-bg: rgba(220, 38, 38, 0.08);
+        --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+        --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+        --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+        --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.1);
+        --radius-sm: 8px;
+        --radius-md: 12px;
+        --radius-lg: 16px;
+        --radius-xl: 20px;
+        --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInLeft {
+        from { opacity: 0; transform: translateX(-20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes scaleIn {
+        from { transform: scale(0.9); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+    }
+
+    @keyframes borderGlow {
+        0%, 100% { border-color: rgba(99, 102, 241, 0.3); }
+        50% { border-color: rgba(99, 102, 241, 0.6); }
+    }
+
+    @keyframes slideInUp {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    * { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important; }
+
+    .stApp { animation: fadeInUp 0.5s ease-out; }
+    h1 { animation: fadeInDown 0.5s ease-out; }
+    h2 { animation: fadeInDown 0.4s ease-out 0.05s both; }
+
+    .stApp, [data-testid="stAppViewContainer"] {
+        background: var(--bg-primary) !important;
+    }
+
+    [data-testid="stHeader"] {
+        background: var(--bg-primary) !important;
+    }
+
+    section[data-testid="stSidebar"] {
+        background: var(--bg-secondary) !important;
+        border-right: 1px solid var(--border) !important;
+    }
+
+    section[data-testid="stSidebar"] > div {
+        background: transparent !important;
+    }
+
+    .nav-header {
+        color: var(--text-muted) !important;
+        font-size: 0.65rem !important;
+        font-weight: 700 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.15em !important;
+        padding: 1rem 0.5rem 0.4rem 0.9rem !important;
+    }
+
+    .nav-item-active {
+        background: var(--accent-glow) !important;
+        border-left: 3px solid var(--accent) !important;
+        color: var(--accent) !important;
+        padding: 0.6rem 0.9rem !important;
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0 !important;
+        font-weight: 500 !important;
+        font-size: 0.9rem !important;
+        animation: fadeInLeft 0.3s ease-out;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button {
+        background: transparent !important;
+        color: var(--text-secondary) !important;
+        border: none !important;
+        text-align: left !important;
+        justify-content: flex-start !important;
+        border-radius: var(--radius-sm) !important;
+        transition: all var(--transition-normal) !important;
+        font-size: 0.9rem !important;
+    }
+
+    section[data-testid="stSidebar"] .stButton > button:hover {
+        background: var(--bg-hover) !important;
+        color: var(--text-primary) !important;
+        transform: translateX(4px) !important;
+    }
+
+    [data-testid="stAppViewContainer"] .stButton > button {
+        border-radius: var(--radius-md) !important;
+        transition: all var(--transition-normal) !important;
+        font-weight: 500 !important;
+    }
+
+    [data-testid="stAppViewContainer"] .stButton > button:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: var(--shadow-md) !important;
+    }
+
+    [data-testid="stAppViewContainer"] .stButton > button[kind="primary"],
+    [data-testid="stAppViewContainer"] .stButton > button[data-testid="baseButton-primary"] {
+        background: var(--accent-gradient) !important;
+        background-size: 200% 200% !important;
+        animation: gradientShift 3s ease infinite !important;
+        color: white !important;
+        border: none !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 15px var(--accent-glow) !important;
+    }
+
+    [data-testid="stAppViewContainer"] .stButton > button[kind="primary"]:hover,
+    [data-testid="stAppViewContainer"] .stButton > button[data-testid="baseButton-primary"]:hover {
+        box-shadow: 0 6px 25px rgba(99, 102, 241, 0.4) !important;
+        transform: translateY(-3px) !important;
+    }
+
+    /* Secondary buttons */
+    [data-testid="stAppViewContainer"] .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]) {
+        background: var(--bg-glass) !important;
+        color: var(--text-primary) !important;
+        border: 1px solid var(--border) !important;
+    }
+
+    [data-testid="stAppViewContainer"] .stButton > button:not([kind="primary"]):not([data-testid="baseButton-primary"]):hover {
+        background: var(--bg-glass-hover) !important;
+        border-color: var(--accent) !important;
+        color: var(--accent-light) !important;
+    }
+
+    .stTextInput > div > div > input,
+    .stNumberInput > div > div > input,
+    .stTextArea > div > div > textarea {
+        border-radius: var(--radius-md) !important;
+        border: 1px solid var(--border) !important;
+        transition: all var(--transition-normal) !important;
+    }
+
+    .stTextInput > div > div > input:focus,
+    .stTextArea > div > div > textarea:focus {
+        border-color: var(--accent) !important;
+        box-shadow: 0 0 0 3px var(--accent-glow) !important;
+    }
+
+    [data-testid="stMetric"] {
+        background: var(--bg-secondary) !important;
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-md) !important;
+        padding: 1rem !important;
+        transition: all var(--transition-normal) !important;
+        box-shadow: var(--shadow-sm) !important;
+    }
+
+    [data-testid="stMetric"]:hover {
+        border-color: var(--accent) !important;
+        box-shadow: var(--shadow-glow) !important;
+        transform: translateY(-2px) !important;
+    }
+
+    [data-testid="stMetricValue"] { color: var(--accent) !important; font-weight: 700 !important; }
+
+    .stTabs [data-baseweb="tab-list"] {
+        border-bottom: 1px solid var(--border) !important;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        color: var(--text-secondary) !important;
+        transition: all var(--transition-normal) !important;
+        font-weight: 500 !important;
+    }
+
+    .stTabs [aria-selected="true"] {
+        color: var(--accent) !important;
+        border-bottom: 2px solid var(--accent) !important;
+    }
+
+    /* ─── Expander ─── */
+    .streamlit-expanderHeader {
+        border-radius: var(--radius-md) !important;
+        transition: all var(--transition-normal) !important;
+        font-weight: 500 !important;
+    }
+
+    .streamlit-expanderHeader:hover {
+        background: var(--bg-hover) !important;
+    }
+
+    /* ─── File Uploader ─── */
+    [data-testid="stFileUploadDropzone"],
+    [data-testid="stFileUploader"] section {
+        border: 2px dashed var(--border-light) !important;
+        border-radius: var(--radius-lg) !important;
+        transition: all var(--transition-normal) !important;
+    }
+
+    [data-testid="stFileUploadDropzone"]:hover {
+        border-color: var(--accent) !important;
+        animation: borderGlow 2s ease infinite;
+    }
+
+    /* ─── Chat Messages ─── */
+    [data-testid="stChatMessage"] {
+        border-radius: var(--radius-lg) !important;
+        animation: fadeInUp 0.3s ease-out !important;
+    }
+
+    .stAlert { border-radius: var(--radius-md) !important; }
+
+    /* ─── Progress Bar ─── */
+    .stProgress > div > div > div {
+        background: var(--accent-gradient) !important;
+        border-radius: 20px !important;
+    }
+
+    /* ─── DataFrame ─── */
+    [data-testid="stDataFrame"] {
+        border: 1px solid var(--border) !important;
+        border-radius: var(--radius-md) !important;
+        overflow: hidden !important;
+    }
+
+    .page-desc { color: var(--text-secondary) !important; font-size: 0.95rem; animation: fadeInUp 0.4s ease-out 0.15s both; }
+    .divider { height: 1px; background: var(--border); margin: 0.75rem 0; }
+
+    .welcome-banner {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.05) 100%);
+        border: 1px solid rgba(99, 102, 241, 0.15);
+        border-radius: var(--radius-xl);
+        padding: 2rem;
+        text-align: center;
+        animation: scaleIn 0.5s ease-out;
+    }
+
+    .step-card {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        padding: 1.2rem;
+        transition: all var(--transition-normal);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .step-card:hover {
+        border-color: var(--accent);
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-glow);
+    }
+
+    .step-number {
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 32px; height: 32px; border-radius: 50%;
+        background: var(--accent-gradient); color: white;
+        font-weight: 700; font-size: 0.85rem; margin-right: 10px;
+    }
+
+    .help-tip {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.03) 100%);
+        border: 1px solid rgba(99, 102, 241, 0.1);
+        border-radius: var(--radius-md);
+        padding: 1rem 1.2rem;
+        font-size: 0.9rem;
+        color: var(--text-secondary);
+        animation: fadeInUp 0.3s ease-out;
+    }
+
+    .kpi-card {
+        background: var(--bg-secondary); border: 1px solid var(--border);
+        border-radius: var(--radius-lg); padding: 1.5rem; text-align: center;
+        box-shadow: var(--shadow-sm); transition: all var(--transition-normal);
+    }
+    .kpi-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-glow); border-color: var(--accent); }
+    .kpi-value { font-size: 2rem; font-weight: 700; color: var(--accent); }
+    .kpi-label { color: var(--text-secondary); font-size: 0.85rem; font-weight: 500; }
+
+    .data-info-card {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.06) 0%, rgba(139, 92, 246, 0.03) 100%);
+        border: 1px solid rgba(99, 102, 241, 0.1);
+        border-radius: var(--radius-md);
+        padding: 0.8rem;
+    }
+
+    .guided-banner {
+        background: linear-gradient(135deg, rgba(22, 163, 74, 0.06) 0%, rgba(99, 102, 241, 0.06) 100%);
+        border: 1px solid rgba(22, 163, 74, 0.12);
+        border-radius: var(--radius-md);
+        padding: 0.75rem 1rem;
+        font-size: 0.85rem;
+        animation: fadeInDown 0.3s ease-out;
+    }
+
+    .status-indicator { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+    .status-saved { background: var(--success-bg); color: var(--success); border: 1px solid rgba(22, 163, 74, 0.15); }
+    .status-saving { background: var(--warning-bg); color: var(--warning); animation: pulse 1.5s infinite; }
+
+    .stColumn:nth-child(1) { animation: fadeInUp 0.3s ease-out 0.05s both; }
+    .stColumn:nth-child(2) { animation: fadeInUp 0.3s ease-out 0.1s both; }
+    .stColumn:nth-child(3) { animation: fadeInUp 0.3s ease-out 0.15s both; }
+    .stColumn:nth-child(4) { animation: fadeInUp 0.3s ease-out 0.2s both; }
+    .stColumn:nth-child(5) { animation: fadeInUp 0.3s ease-out 0.25s both; }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+    /* ─── Scrollbar ─── */
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* ─── Spinner ─── */
+    .stSpinner > div { border-color: var(--accent) !important; }
+
+    /* ─── Slider ─── */
+    .stSlider > div > div > div > div { background: var(--accent) !important; }
+
+    /* ─── Tooltip ─── */
+    [data-testid="stTooltipIcon"] { color: var(--accent) !important; }
+
+    /* ─── Notification Toast ─── */
+    .toast-notification {
+        position: fixed; top: 80px; right: 20px;
+        padding: 12px 20px; border-radius: var(--radius-md);
+        font-size: 0.85rem; z-index: 1001;
+        animation: slideInUp 0.3s ease-out;
+        max-width: 350px;
+    }
+    .toast-success { background: var(--success-bg); border: 1px solid rgba(22, 163, 74, 0.3); color: var(--success); }
+    .toast-info { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.3); color: var(--accent); }
+
+    </style>
+    """, unsafe_allow_html=True)
 
 # Apply theme
 apply_theme()
@@ -1378,21 +702,9 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-    # Theme & Mode Toggle Row
-    tc1, tc2, tc3 = st.columns([1, 1, 1])
+    # Mode Toggle Row (theme toggle removed - light mode only)
+    tc1, tc2 = st.columns([1, 1])
     with tc1:
-        theme_btn = "☀️" if st.session_state.get('dark_mode') else "🌙"
-        if st.button(theme_btn, help="Toggle light/dark theme", key="theme_toggle"):
-            st.session_state['dark_mode'] = not st.session_state.get('dark_mode', True)
-            try:
-                save_user_preferences("default_user", {
-                    **st.session_state.get('user_preferences', {}),
-                    'dark_mode': st.session_state['dark_mode']
-                })
-            except Exception:
-                pass
-            st.rerun()
-    with tc2:
         guide_icon = "🎯" if st.session_state.get('guided_mode') else "⚡"
         if st.button(guide_icon, help="Toggle guided mode (tips & suggestions)", key="guide_toggle"):
             st.session_state['guided_mode'] = not st.session_state.get('guided_mode', True)
@@ -1404,7 +716,7 @@ with st.sidebar:
             except Exception:
                 pass
             st.rerun()
-    with tc3:
+    with tc2:
         if st.button("❓", help="Show help for current page", key="help_toggle"):
             st.session_state['show_help_panel'] = not st.session_state.get('show_help_panel', False)
             st.rerun()
@@ -1505,8 +817,7 @@ with st.sidebar:
 
     # Version
     mode_label = "Guided" if st.session_state.get('guided_mode') else "Expert"
-    theme_label = "Dark" if st.session_state.get('dark_mode') else "Light"
-    st.caption(f"v{config['version']} · {theme_label} · {mode_label}")
+    st.caption(f"v{config['version']} · {mode_label}")
 
 
 # ─── Main Content ────────────────────────────────────────────────────
@@ -1566,8 +877,7 @@ if not st.session_state.get('onboarding_complete', False) and page == "Data Inge
             try:
                 save_user_preferences("default_user", {
                     'onboarding_complete': True,
-                    'guided_mode': False,
-                    'dark_mode': st.session_state.get('dark_mode', True)
+                    'guided_mode': False
                 })
             except Exception:
                 pass
