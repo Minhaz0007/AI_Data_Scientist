@@ -1,12 +1,17 @@
 """
 Enhanced Data Ingestion Component
 Supports file upload, URL loading, SQL databases, sample datasets, and auto-detection.
+Files are persisted in the database and survive app refreshes.
 """
 
 import streamlit as st
 import pandas as pd
 import pyarrow as pa
 from utils.data_loader import load_data, load_sql, load_url, load_api, load_sample
+from utils.db import (
+    save_uploaded_file, load_uploaded_files_list,
+    load_uploaded_file_data, delete_uploaded_file
+)
 import os
 import requests
 import warnings
@@ -141,8 +146,24 @@ def get_data_summary(df):
     return summary
 
 
+def _persist_data(df, file_name, file_type, file_size=0, source='file_upload'):
+    """Save data to session state and persist to database."""
+    st.session_state['data'] = df
+    st.session_state['file_meta'] = {
+        'name': file_name,
+        'size': file_size,
+        'type': file_type,
+        'source': source
+    }
+    # Persist to database
+    save_uploaded_file(df, file_name, file_type, file_size=file_size, source=source)
+
+
 def render():
     st.header("Data Ingestion")
+
+    # Show recent files section first
+    render_recent_files()
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(["File Upload", "URL", "API", "SQL Database", "Sample Datasets"])
 
@@ -165,6 +186,57 @@ def render():
     # Data preview and info
     if st.session_state.get('data') is not None:
         render_data_preview()
+
+
+def render_recent_files():
+    """Show recent files stored in the database."""
+    files = load_uploaded_files_list()
+    if not files:
+        return
+
+    st.subheader("Recent Files")
+    st.caption("Previously uploaded files are stored and available across sessions.")
+
+    # Display as a table with actions
+    for idx, f in enumerate(files):
+        col1, col2, col3, col4 = st.columns([3, 2, 1, 1])
+        with col1:
+            display_name = f['file_name']
+            if len(display_name) > 35:
+                display_name = display_name[:32] + "..."
+            st.markdown(f"**{display_name}**")
+        with col2:
+            st.caption(f"{f['row_count']} rows x {f['col_count']} cols | {f['file_type']}")
+        with col3:
+            if st.button("Load", key=f"load_file_{f['id']}_{idx}", type="primary"):
+                with st.spinner(f"Loading {f['file_name']}..."):
+                    df, name, ftype = load_uploaded_file_data(f['id'])
+                    if df is not None:
+                        st.session_state['data'] = df
+                        st.session_state['file_meta'] = {
+                            'name': name,
+                            'size': f.get('file_size', 0),
+                            'type': ftype,
+                            'source': f.get('source', 'database')
+                        }
+                        st.success(f"Loaded {name}")
+                        st.rerun()
+                    else:
+                        st.error("Failed to load file from database.")
+        with col4:
+            if st.button("Delete", key=f"delete_file_{f['id']}_{idx}"):
+                if delete_uploaded_file(f['id']):
+                    # If the currently loaded file is the one being deleted, clear it
+                    current_meta = st.session_state.get('file_meta')
+                    if current_meta and current_meta.get('name') == f['file_name']:
+                        st.session_state['data'] = None
+                        st.session_state['file_meta'] = None
+                    st.success(f"Deleted {f['file_name']}")
+                    st.rerun()
+                else:
+                    st.error("Failed to delete file.")
+
+    st.markdown("---")
 
 
 def render_file_upload():
@@ -227,13 +299,7 @@ def render_file_upload():
                     if optimize_types:
                         df = auto_optimize_dtypes(df)
 
-                    st.session_state['data'] = df
-                    st.session_state['file_meta'] = {
-                        'name': uploaded_file.name,
-                        'size': uploaded_file.size,
-                        'type': file_type,
-                        'source': 'file_upload'
-                    }
+                    _persist_data(df, uploaded_file.name, file_type, file_size=uploaded_file.size, source='file_upload')
                     st.success(f"Successfully loaded {uploaded_file.name}")
                     st.rerun()
 
@@ -264,12 +330,8 @@ def render_url_upload():
                 if optimize_types:
                     df = auto_optimize_dtypes(df)
 
-                st.session_state['data'] = df
-                st.session_state['file_meta'] = {
-                    'name': url.split('/')[-1] or "URL Dataset",
-                    'size': 0,
-                    'type': "url"
-                }
+                file_name = url.split('/')[-1] or "URL Dataset"
+                _persist_data(df, file_name, 'url', source='url')
                 st.success("Successfully loaded data from URL.")
                 st.rerun()
 
@@ -286,12 +348,7 @@ def render_api_upload():
             try:
                 with st.spinner("Fetching API data..."):
                     df = load_api(api_url, json_key=json_key if json_key else None)
-                    st.session_state['data'] = df
-                    st.session_state['file_meta'] = {
-                        'name': "API Data",
-                        'size': 0,
-                        'type': "api"
-                    }
+                    _persist_data(df, "API Data", 'api', source='api')
                     st.success("Successfully loaded data from API.")
                     st.rerun()
             except Exception as e:
@@ -310,12 +367,7 @@ def render_sql_connection():
             try:
                 with st.spinner("Executing query..."):
                     df = load_sql(conn_string, query)
-                    st.session_state['data'] = df
-                    st.session_state['file_meta'] = {
-                        'name': 'SQL Query Result',
-                        'size': 0,
-                        'type': 'sql'
-                    }
+                    _persist_data(df, 'SQL Query Result', 'sql', source='sql')
                     st.success("Successfully loaded data from SQL.")
                     st.rerun()
             except Exception as e:
@@ -337,12 +389,7 @@ def render_sample_datasets():
                     "Wine Quality": "wine"
                 }
                 df = load_sample(key_map[dataset])
-                st.session_state['data'] = df
-                st.session_state['file_meta'] = {
-                    'name': f"{dataset} Sample",
-                    'size': 0,
-                    'type': 'sample'
-                }
+                _persist_data(df, f"{dataset} Sample", 'sample', source='sample')
                 st.success(f"Successfully loaded {dataset} dataset.")
                 st.rerun()
         except Exception as e:
