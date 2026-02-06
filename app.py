@@ -64,7 +64,8 @@ def apply_theme():
        We hide the text color and replace it with an SVG background.
        ═══════════════════════════════════════════════════════════ */
     [data-testid="stSidebarCollapseButton"] button,
-    [data-testid="collapsedControl"] button {
+    [data-testid="collapsedControl"] button,
+    [data-testid="stExpandSidebarButton"] {
         font-size: 0 !important;
         overflow: hidden !important;
     }
@@ -72,8 +73,10 @@ def apply_theme():
     /* Target the icon element which contains the leaking text */
     [data-testid="stSidebarCollapseButton"] button span,
     [data-testid="collapsedControl"] button span,
+    [data-testid="stExpandSidebarButton"] span,
     [data-testid="stSidebarCollapseButton"] button [data-testid="stIconMaterial"],
     [data-testid="collapsedControl"] button [data-testid="stIconMaterial"],
+    [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"],
     [data-testid="stExpander"] [data-testid="stIconMaterial"] {
         color: transparent !important; /* Hide the text "ub", "arrow...", etc */
         font-size: 1.25rem !important;
@@ -89,9 +92,11 @@ def apply_theme():
     /* Inject SVG icon replacements */
     [data-testid="stSidebarCollapseButton"] button [data-testid="stIconMaterial"]::after,
     [data-testid="collapsedControl"] button [data-testid="stIconMaterial"]::after,
+    [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]::after,
     [data-testid="stExpander"] [data-testid="stIconMaterial"]::after,
     [data-testid="stSidebarCollapseButton"] button span::after,
-    [data-testid="collapsedControl"] button span::after {
+    [data-testid="collapsedControl"] button span::after,
+    [data-testid="stExpandSidebarButton"] span::after {
         content: "";
         position: absolute;
         left: 0;
@@ -112,29 +117,35 @@ def apply_theme():
     /* Chevron Right for Collapsed Control and Expanders */
     [data-testid="collapsedControl"] button [data-testid="stIconMaterial"]::after,
     [data-testid="collapsedControl"] button span::after,
+    [data-testid="stExpandSidebarButton"] [data-testid="stIconMaterial"]::after,
+    [data-testid="stExpandSidebarButton"] span::after,
     [data-testid="stExpander"] [data-testid="stIconMaterial"]::after {
         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364648c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'%3E%3C/polyline%3E%3C/svg%3E") !important;
     }
     /* Hide any raw text in the collapse button area */
     [data-testid="stSidebarCollapseButton"],
-    [data-testid="collapsedControl"] {
+    [data-testid="collapsedControl"],
+    [data-testid="stExpandSidebarButton"] {
         overflow: hidden !important;
         max-height: 48px !important;
     }
     /* Force the sidebar collapse icon to use SVG fallback */
     [data-testid="stSidebarCollapseButton"] button::before,
-    [data-testid="collapsedControl"] button::before {
+    [data-testid="collapsedControl"] button::before,
+    [data-testid="stExpandSidebarButton"]::before {
         content: "" !important;
     }
     [data-testid="stSidebarCollapseButton"] button svg,
-    [data-testid="collapsedControl"] button svg {
+    [data-testid="collapsedControl"] button svg,
+    [data-testid="stExpandSidebarButton"] svg {
         width: 20px !important;
         height: 20px !important;
     }
     /* Ensure no text overflow from the sidebar nav button area */
     [data-testid="stSidebarNavLink"] span,
     [data-testid="stSidebarCollapseButton"] *,
-    [data-testid="collapsedControl"] * {
+    [data-testid="collapsedControl"] *,
+    [data-testid="stExpandSidebarButton"] * {
         text-overflow: ellipsis !important;
         overflow: hidden !important;
         white-space: nowrap !important;
