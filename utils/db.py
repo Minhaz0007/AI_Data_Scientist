@@ -13,9 +13,16 @@ SQLITE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data_eng
 
 def get_connection_string():
     """Get database connection string. Falls back to SQLite."""
+    # Check environment variable first
     db_url = os.environ.get("DATABASE_URL")
     if db_url:
         return db_url
+    # Check Streamlit secrets (for Streamlit Cloud deployment)
+    try:
+        if hasattr(st, 'secrets') and 'DATABASE_URL' in st.secrets:
+            return st.secrets['DATABASE_URL']
+    except Exception:
+        pass
     return f"sqlite:///{SQLITE_PATH}"
 
 
