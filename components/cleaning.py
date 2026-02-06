@@ -12,8 +12,215 @@ from utils.data_processor import (
     convert_column_type, get_column_types, clean_string_column, map_values,
     replace_values, drop_columns, rename_columns, reorder_columns, split_column,
     remove_duplicates_subset, get_duplicate_rows, remove_rows_by_condition,
-    label_encode, one_hot_encode
+    label_encode, one_hot_encode,
+    get_data_health_report, apply_selected_recommendations
 )
+
+
+def render_data_insights(df):
+    """
+    Render a comprehensive data health insights dashboard.
+    Shown immediately when the user navigates to the Data Cleaning page.
+    Analyzes the entire file and suggests what cleaning actions to take.
+    """
+    report = get_data_health_report(df)
+
+    # --- Quality Score Header ---
+    score = report['quality_score']
+    if score >= 90:
+        score_color = "green"
+        score_label = "Excellent"
+    elif score >= 70:
+        score_color = "orange"
+        score_label = "Good"
+    elif score >= 50:
+        score_color = "orange"
+        score_label = "Fair"
+    else:
+        score_color = "red"
+        score_label = "Needs Attention"
+
+    st.subheader("Data Health Report")
+    st.markdown(f"**Overall Quality Score: {score}/100** ({score_label})")
+    st.progress(min(score / 100, 1.0))
+
+    # Quality breakdown
+    breakdown = report.get('quality_breakdown', {})
+    qcol1, qcol2, qcol3 = st.columns(3)
+    qcol1.metric("Completeness", f"{breakdown.get('missing_score', 0)}/100",
+                  help="Based on missing value ratio")
+    qcol2.metric("Uniqueness", f"{breakdown.get('duplicate_score', 0)}/100",
+                  help="Based on duplicate row ratio")
+    qcol3.metric("Consistency", f"{breakdown.get('outlier_score', 0)}/100",
+                  help="Based on outlier ratio in numeric columns")
+
+    # --- Dataset Overview ---
+    st.markdown("---")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Rows", f"{report['total_rows']:,}")
+    col2.metric("Columns", report['total_columns'])
+    col3.metric("Missing Values", f"{report['total_missing']:,}")
+    col4.metric("Duplicate Rows", f"{report['total_duplicates']:,}")
+
+    # --- Issues Found ---
+    if report['issues']:
+        st.markdown("---")
+        st.markdown("### Issues Found")
+
+        high_issues = [i for i in report['issues'] if i['severity'] == 'high']
+        med_issues = [i for i in report['issues'] if i['severity'] == 'medium']
+        low_issues = [i for i in report['issues'] if i['severity'] == 'low']
+
+        for issue in high_issues:
+            st.error(f"**HIGH:** {issue['message']}")
+        for issue in med_issues:
+            st.warning(f"**MEDIUM:** {issue['message']}")
+        if low_issues:
+            with st.expander(f"Low severity issues ({len(low_issues)})", expanded=False):
+                for issue in low_issues:
+                    st.info(issue['message'])
+    else:
+        st.success("No data quality issues detected. Your data looks clean!")
+        return
+
+    # --- Column Health Summary ---
+    st.markdown("---")
+    with st.expander("Column-by-Column Health", expanded=False):
+        col_rows = []
+        for col, info in report['column_health'].items():
+            status_map = {
+                'good': 'Good',
+                'fair': 'Fair',
+                'poor': 'Poor',
+                'critical': 'Critical',
+                'constant': 'Constant',
+            }
+            status = status_map.get(info['health'], info['health'])
+            flags = []
+            if info['missing'] > 0:
+                flags.append(f"{info['missing_pct']}% missing")
+            if info.get('type_mismatch'):
+                flags.append("type mismatch")
+            if info.get('has_whitespace'):
+                flags.append("whitespace")
+            if info.get('outliers', 0) > 0:
+                flags.append(f"{info['outlier_pct']}% outliers")
+            if info['health'] == 'constant':
+                flags.append("constant value")
+
+            col_rows.append({
+                'Column': col,
+                'Type': info['dtype'],
+                'Health': status,
+                'Missing': f"{info['missing']:,} ({info['missing_pct']}%)" if info['missing'] > 0 else "0",
+                'Issues': ', '.join(flags) if flags else 'None',
+            })
+
+        st.dataframe(pd.DataFrame(col_rows), use_container_width=True, hide_index=True)
+
+    # --- Recommended Actions ---
+    if report['recommendations']:
+        st.markdown("---")
+        st.markdown("### Recommended Cleaning Actions")
+        st.markdown("Select the actions you want to apply. Each shows the estimated impact on your data.")
+
+        # Store report in session state for use by the apply button
+        st.session_state['_health_report'] = report
+
+        selected = []
+        for rec in report['recommendations']:
+            # Build impact label
+            if rec['impact_type'] == 'rows_removed':
+                impact = f"**Impact:** {rec['impact_rows']:,} rows will be removed"
+                pct = round(rec['impact_rows'] / report['total_rows'] * 100, 1) if report['total_rows'] > 0 else 0
+                impact += f" ({pct}% of data)"
+            elif rec['impact_type'] == 'cols_removed':
+                impact = f"**Impact:** {rec['impact_cols']} column(s) will be removed"
+            elif rec['impact_type'] == 'values_filled':
+                impact = f"**Impact:** Missing values filled (no rows removed)"
+            elif rec['impact_type'] == 'types_fixed':
+                impact = f"**Impact:** Column types corrected (no rows removed)"
+            elif rec['impact_type'] == 'values_cleaned':
+                impact = f"**Impact:** Values cleaned in place (no rows removed)"
+            else:
+                impact = ""
+
+            checked = st.checkbox(
+                rec['label'],
+                value=rec.get('safe', False) and rec['impact_type'] != 'rows_removed',
+                key=f"rec_{rec['id']}",
+                help=rec.get('description', '')
+            )
+            st.caption(f"  {impact}")
+
+            if checked:
+                selected.append(rec['id'])
+
+        st.markdown("---")
+
+        # Estimate total impact
+        total_rows_removed = sum(
+            r['impact_rows'] for r in report['recommendations']
+            if r['id'] in selected and r.get('impact_rows', 0) > 0
+        )
+        total_cols_removed = sum(
+            r['impact_cols'] for r in report['recommendations']
+            if r['id'] in selected and r.get('impact_cols', 0) > 0
+        )
+
+        est_col1, est_col2, est_col3 = st.columns(3)
+        est_col1.metric("Actions Selected", len(selected))
+        est_col2.metric("Est. Rows Removed", f"{total_rows_removed:,}")
+        est_col3.metric("Est. Columns Removed", total_cols_removed)
+
+        if report['total_rows'] > 0:
+            remaining_pct = round((report['total_rows'] - total_rows_removed) / report['total_rows'] * 100, 1)
+            st.markdown(f"**Estimated data retained: {remaining_pct}%** ({report['total_rows'] - total_rows_removed:,} rows)")
+
+        # Apply button
+        col_left, col_center, col_right = st.columns([1, 2, 1])
+        with col_center:
+            if st.button("Apply Selected Cleaning Actions", type="primary", use_container_width=True, key="apply_insights_clean"):
+                if not selected:
+                    st.warning("No actions selected. Please check at least one action above.")
+                else:
+                    with st.spinner("Applying selected cleaning actions..."):
+                        df_clean, log = apply_selected_recommendations(df, selected, report)
+
+                        st.success("Cleaning complete!")
+                        st.markdown("**What was done:**")
+                        for entry in log:
+                            st.write(f"- {entry}")
+
+                        # Before/after comparison
+                        cmp1, cmp2 = st.columns(2)
+                        with cmp1:
+                            st.markdown("**Before:**")
+                            st.write(f"Rows: {len(df):,}")
+                            st.write(f"Columns: {len(df.columns)}")
+                            st.write(f"Missing: {df.isnull().sum().sum():,}")
+                        with cmp2:
+                            st.markdown("**After:**")
+                            st.write(f"Rows: {len(df_clean):,}")
+                            st.write(f"Columns: {len(df_clean.columns)}")
+                            st.write(f"Missing: {df_clean.isnull().sum().sum():,}")
+
+                        rows_removed = len(df) - len(df_clean)
+                        if rows_removed > 0:
+                            retained = round(len(df_clean) / len(df) * 100, 1)
+                            st.info(f"Removed {rows_removed:,} rows. {retained}% of data retained.")
+
+                        # Preview
+                        st.markdown("**Preview of cleaned data:**")
+                        try:
+                            st.dataframe(df_clean.head(10), use_container_width=True)
+                        except pa.ArrowInvalid:
+                            st.dataframe(df_clean.head(10).astype(str), use_container_width=True)
+
+                        if st.button("Confirm and Apply", key="confirm_insights_clean"):
+                            st.session_state['data'] = df_clean
+                            st.success("Changes saved!")
+                            st.rerun()
 
 
 def analyze_cleaning_needs(df):
@@ -113,42 +320,69 @@ def analyze_cleaning_needs(df):
 
 
 def auto_clean_data(df, actions):
-    """Apply automatic cleaning based on recommended actions."""
+    """
+    Apply automatic cleaning based on recommended actions.
+    Order: duplicates first, then column drops, then imputation, then type conversion, then trim.
+    This avoids cascade issues where column removal creates false duplicates.
+    """
     df_clean = df.copy()
     log = []
 
-    for action in actions:
+    # Sort actions: duplicates first, then drops, then impute, then convert, then trim
+    action_order = {
+        'remove_duplicates': 0,
+        'drop_column': 1,
+        'impute': 2,
+        'convert_numeric': 3,
+        'trim': 4,
+    }
+    sorted_actions = sorted(actions, key=lambda a: action_order.get(a['type'], 99))
+
+    for action in sorted_actions:
         try:
             if action['type'] == 'remove_duplicates':
                 before = len(df_clean)
                 df_clean = df_clean.drop_duplicates()
-                log.append(f"Removed {before - len(df_clean)} duplicate rows")
+                removed = before - len(df_clean)
+                log.append(f"Removed {removed:,} duplicate rows")
 
             elif action['type'] == 'drop_column':
-                df_clean = df_clean.drop(columns=[action['column']])
-                log.append(f"Dropped column '{action['column']}'")
+                col = action['column']
+                if col in df_clean.columns:
+                    df_clean = df_clean.drop(columns=[col])
+                    log.append(f"Dropped column '{col}'")
 
             elif action['type'] == 'impute':
                 col = action['column']
-                if action['strategy'] == 'median':
-                    value = df_clean[col].median()
-                    df_clean[col] = df_clean[col].fillna(value)
-                    log.append(f"Imputed '{col}' with median ({value:.2f})")
-                elif action['strategy'] == 'mode':
-                    mode_val = df_clean[col].mode()
-                    if len(mode_val) > 0:
-                        df_clean[col] = df_clean[col].fillna(mode_val.iloc[0])
-                        log.append(f"Imputed '{col}' with mode ({mode_val.iloc[0]})")
+                if col in df_clean.columns and df_clean[col].isnull().any():
+                    n_missing = int(df_clean[col].isnull().sum())
+                    if action['strategy'] == 'median':
+                        value = df_clean[col].median()
+                        df_clean[col] = df_clean[col].fillna(value)
+                        log.append(f"Filled {n_missing:,} missing in '{col}' with median ({value:.2f})")
+                    elif action['strategy'] == 'mode':
+                        mode_val = df_clean[col].mode()
+                        if len(mode_val) > 0:
+                            df_clean[col] = df_clean[col].fillna(mode_val.iloc[0])
+                            log.append(f"Filled {n_missing:,} missing in '{col}' with mode ({mode_val.iloc[0]})")
 
             elif action['type'] == 'convert_numeric':
                 col = action['column']
-                df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
-                log.append(f"Converted '{col}' to numeric")
+                if col in df_clean.columns:
+                    before_missing = int(df_clean[col].isnull().sum())
+                    df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
+                    after_missing = int(df_clean[col].isnull().sum())
+                    new_missing = after_missing - before_missing
+                    msg = f"Converted '{col}' to numeric"
+                    if new_missing > 0:
+                        msg += f" ({new_missing} non-numeric values became missing)"
+                    log.append(msg)
 
             elif action['type'] == 'trim':
                 col = action['column']
-                df_clean[col] = df_clean[col].apply(lambda x: str(x).strip() if pd.notna(x) else x)
-                log.append(f"Trimmed whitespace in '{col}'")
+                if col in df_clean.columns:
+                    df_clean[col] = df_clean[col].apply(lambda x: str(x).strip() if pd.notna(x) else x)
+                    log.append(f"Trimmed whitespace in '{col}'")
 
         except Exception as e:
             log.append(f"Error in {action['type']}: {str(e)}")
@@ -207,11 +441,18 @@ def render_auto_clean(df):
         # Select which actions to apply
         st.markdown("**Select actions to apply:**")
 
-        apply_duplicates = st.checkbox("Remove duplicates", value=True, key="ac_dup")
-        apply_imputation = st.checkbox("Impute missing values (median/mode)", value=True, key="ac_imp")
-        apply_type_conversion = st.checkbox("Convert mismatched types", value=False, key="ac_type")
-        apply_trim = st.checkbox("Trim whitespace", value=True, key="ac_trim")
-        drop_high_missing = st.checkbox("Drop columns with >50% missing", value=False, key="ac_drop")
+        dup_count = df.duplicated().sum()
+        dup_label = f"Remove duplicates ({dup_count:,} rows)" if dup_count > 0 else "Remove duplicates (none found)"
+        apply_duplicates = st.checkbox(dup_label, value=False, key="ac_dup",
+                                       help="Removes exact duplicate rows. Disabled by default to prevent accidental data loss.")
+        apply_imputation = st.checkbox("Impute missing values (median/mode)", value=True, key="ac_imp",
+                                       help="Fills missing values without removing any rows.")
+        apply_type_conversion = st.checkbox("Convert mismatched types", value=False, key="ac_type",
+                                            help="Converts text columns that look numeric. Non-numeric values become missing.")
+        apply_trim = st.checkbox("Trim whitespace", value=True, key="ac_trim",
+                                  help="Removes leading/trailing spaces from text columns.")
+        drop_high_missing = st.checkbox("Drop columns with >50% missing", value=False, key="ac_drop",
+                                         help="Removes entire columns that are mostly empty.")
 
     with col2:
         st.markdown("**Preview changes:**")
@@ -305,14 +546,15 @@ def render():
 
     df = st.session_state['data']
 
-    st.subheader("Current Dataset Info")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Rows", f"{len(df):,}")
-    col2.metric("Columns", len(df.columns))
-    col3.metric("Missing Values", f"{df.isnull().sum().sum():,}")
-    col4.metric("Duplicates", f"{df.duplicated().sum():,}")
+    # --- Data Health Insights (shown immediately) ---
+    render_data_insights(df)
 
     st.markdown("---")
+    st.markdown("---")
+
+    # --- Detailed Cleaning Tools ---
+    st.subheader("Detailed Cleaning Tools")
+    st.markdown("Use the tabs below for granular control over specific cleaning operations.")
 
     # Create tabs for different cleaning operations
     tabs = st.tabs([
@@ -352,32 +594,8 @@ def render():
 
     st.markdown("---")
 
-    # Automated Cleaning
-    st.subheader("Automated Cleaning")
-    from utils.data_processor import get_cleaning_suggestions, auto_clean
-
-    with st.expander("✨ AI / Auto-Cleaning Suggestions", expanded=True):
-        suggestions = get_cleaning_suggestions(df)
-        if suggestions:
-            st.write("Based on your data, we suggest:")
-            for s in suggestions:
-                st.write(f"- {s}")
-
-            if st.button("🚀 Apply Auto-Clean (One-Click)", type="primary"):
-                df_clean, log = auto_clean(df)
-                st.session_state['data'] = df_clean
-                st.success("Auto-clean complete!")
-                with st.expander("View Cleaning Log"):
-                    for l in log:
-                        st.write(f"✓ {l}")
-                st.rerun()
-        else:
-            st.info("Data looks good! No obvious issues found for auto-cleaning.")
-
-    st.markdown("---")
-
     # Show Data Preview
-    st.subheader("Cleaned Data Preview")
+    st.subheader("Current Data Preview")
     try:
         st.dataframe(st.session_state['data'].head())
     except pa.ArrowInvalid:

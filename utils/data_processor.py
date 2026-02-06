@@ -862,41 +862,361 @@ def auto_clean(df):
     """
     Automatically apply common cleaning operations.
     Returns cleaned dataframe and a log of actions.
+
+    Order of operations is important to avoid cascade issues:
+    1. Remove exact duplicates FIRST (on all original columns)
+    2. Then drop high-missing columns
+    3. Then drop constant columns
+    4. Then impute remaining missing values
     """
     df_clean = df.copy()
     log = []
 
-    # 1. Drop high missing columns (>50%)
+    # 1. Remove exact duplicates FIRST (before dropping any columns)
+    # This prevents false duplicates created by column removal.
+    n_dups = df_clean.duplicated().sum()
+    if n_dups > 0:
+        df_clean = df_clean.drop_duplicates()
+        log.append(f"Removed {n_dups} exact duplicate rows")
+
+    # 2. Drop columns with >50% missing
     cols_to_drop = [col for col in df_clean.columns if df_clean[col].isnull().mean() > 0.5]
     if cols_to_drop:
         df_clean = df_clean.drop(columns=cols_to_drop)
         log.append(f"Dropped columns with >50% missing: {', '.join(cols_to_drop)}")
 
-    # 2. Drop constant columns
+    # 3. Drop constant columns (only 1 unique value including NaN)
     const_cols = [col for col in df_clean.columns if df_clean[col].nunique() <= 1]
     if const_cols:
         df_clean = df_clean.drop(columns=const_cols)
         log.append(f"Dropped constant columns: {', '.join(const_cols)}")
 
-    # 3. Remove duplicates
-    n_dups = df_clean.duplicated().sum()
-    if n_dups > 0:
-        df_clean = df_clean.drop_duplicates()
-        log.append(f"Removed {n_dups} duplicate rows")
-
-    # 4. Impute remaining missing
+    # 4. Impute remaining missing values (no rows removed)
     for col in df_clean.columns:
         if df_clean[col].isnull().any():
+            missing_count = df_clean[col].isnull().sum()
             if pd.api.types.is_numeric_dtype(df_clean[col]):
                 val = df_clean[col].median()
                 df_clean[col] = df_clean[col].fillna(val)
-                log.append(f"Imputed '{col}' with median ({val})")
+                log.append(f"Filled {missing_count} missing values in '{col}' with median ({val})")
             else:
                 val = df_clean[col].mode()[0]
                 df_clean[col] = df_clean[col].fillna(val)
-                log.append(f"Imputed '{col}' with mode ('{val}')")
+                log.append(f"Filled {missing_count} missing values in '{col}' with mode ('{val}')")
 
     return df_clean, log
+
+def get_data_health_report(df):
+    """
+    Generate a comprehensive data health report with actionable insights.
+    Returns a dict with quality score, per-column health, detected issues,
+    and recommended actions with estimated impact.
+    """
+    report = {
+        'total_rows': len(df),
+        'total_columns': len(df.columns),
+        'total_cells': len(df) * len(df.columns),
+        'total_missing': int(df.isnull().sum().sum()),
+        'total_duplicates': int(df.duplicated().sum()),
+        'column_health': {},
+        'issues': [],
+        'recommendations': [],
+    }
+
+    n_rows = len(df)
+    if n_rows == 0:
+        report['quality_score'] = 0
+        return report
+
+    # --- Per-column health ---
+    for col in df.columns:
+        missing = int(df[col].isnull().sum())
+        missing_pct = round(missing / n_rows * 100, 1)
+        nunique = int(df[col].nunique())
+        dtype = str(df[col].dtype)
+
+        health = 'good'
+        if missing_pct > 50:
+            health = 'critical'
+        elif missing_pct > 20:
+            health = 'poor'
+        elif missing_pct > 5:
+            health = 'fair'
+
+        col_info = {
+            'dtype': dtype,
+            'missing': missing,
+            'missing_pct': missing_pct,
+            'nunique': nunique,
+            'health': health,
+        }
+
+        # Check if constant
+        if nunique <= 1:
+            col_info['health'] = 'constant'
+
+        # Check type mismatch (object that looks numeric)
+        if df[col].dtype == 'object':
+            non_null = df[col].dropna()
+            if len(non_null) > 0:
+                try:
+                    pd.to_numeric(non_null.head(100))
+                    col_info['type_mismatch'] = True
+                except (ValueError, TypeError):
+                    col_info['type_mismatch'] = False
+            else:
+                col_info['type_mismatch'] = False
+        else:
+            col_info['type_mismatch'] = False
+
+        # Check whitespace issues
+        if df[col].dtype == 'object' and df[col].notna().any():
+            sample = df[col].dropna().head(100)
+            has_ws = sample.apply(lambda x: str(x) != str(x).strip()).any()
+            col_info['has_whitespace'] = bool(has_ws)
+        else:
+            col_info['has_whitespace'] = False
+
+        # Check outliers for numeric columns
+        if pd.api.types.is_numeric_dtype(df[col]) and df[col].notna().sum() > 10:
+            Q1 = df[col].quantile(0.25)
+            Q3 = df[col].quantile(0.75)
+            IQR = Q3 - Q1
+            if IQR > 0:
+                outlier_count = int(((df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)).sum())
+                col_info['outliers'] = outlier_count
+                col_info['outlier_pct'] = round(outlier_count / n_rows * 100, 1)
+            else:
+                col_info['outliers'] = 0
+                col_info['outlier_pct'] = 0.0
+        else:
+            col_info['outliers'] = 0
+            col_info['outlier_pct'] = 0.0
+
+        report['column_health'][col] = col_info
+
+    # --- Build issues and recommendations ---
+    # Duplicates
+    dup_count = report['total_duplicates']
+    if dup_count > 0:
+        dup_pct = round(dup_count / n_rows * 100, 1)
+        report['issues'].append({
+            'type': 'duplicates',
+            'severity': 'high' if dup_pct > 10 else 'medium' if dup_pct > 2 else 'low',
+            'message': f"{dup_count:,} duplicate rows ({dup_pct}% of data)",
+        })
+        report['recommendations'].append({
+            'id': 'remove_duplicates',
+            'label': f"Remove {dup_count:,} exact duplicate rows",
+            'impact_rows': dup_count,
+            'impact_cols': 0,
+            'impact_type': 'rows_removed',
+            'severity': 'medium',
+            'safe': True,
+            'description': f"Removes rows that are identical across ALL columns. {dup_pct}% of your data.",
+        })
+
+    # Missing values per column
+    cols_high_missing = []
+    cols_to_impute = []
+    for col, info in report['column_health'].items():
+        if info['missing'] > 0:
+            if info['missing_pct'] > 50:
+                cols_high_missing.append(col)
+                report['issues'].append({
+                    'type': 'missing_high',
+                    'severity': 'high',
+                    'message': f"Column '{col}' has {info['missing_pct']}% missing values",
+                })
+            else:
+                cols_to_impute.append(col)
+                if info['missing_pct'] > 5:
+                    report['issues'].append({
+                        'type': 'missing',
+                        'severity': 'medium',
+                        'message': f"Column '{col}' has {info['missing']:,} missing values ({info['missing_pct']}%)",
+                    })
+
+    if cols_high_missing:
+        report['recommendations'].append({
+            'id': 'drop_high_missing_cols',
+            'label': f"Drop {len(cols_high_missing)} column(s) with >50% missing values",
+            'columns': cols_high_missing,
+            'impact_rows': 0,
+            'impact_cols': len(cols_high_missing),
+            'impact_type': 'cols_removed',
+            'severity': 'high',
+            'safe': True,
+            'description': f"Columns: {', '.join(cols_high_missing)}. These have too much missing data to be useful.",
+        })
+
+    if cols_to_impute:
+        total_missing_to_fill = sum(report['column_health'][c]['missing'] for c in cols_to_impute)
+        report['recommendations'].append({
+            'id': 'impute_missing',
+            'label': f"Fill {total_missing_to_fill:,} missing values across {len(cols_to_impute)} column(s)",
+            'columns': cols_to_impute,
+            'impact_rows': 0,
+            'impact_cols': 0,
+            'impact_type': 'values_filled',
+            'severity': 'medium',
+            'safe': True,
+            'description': "Fill numeric columns with median, categorical columns with most frequent value. No rows removed.",
+        })
+
+    # Constant columns
+    const_cols = [col for col, info in report['column_health'].items() if info['health'] == 'constant']
+    if const_cols:
+        report['issues'].append({
+            'type': 'constant_columns',
+            'severity': 'low',
+            'message': f"{len(const_cols)} column(s) have only one unique value",
+        })
+        report['recommendations'].append({
+            'id': 'drop_constant_cols',
+            'label': f"Drop {len(const_cols)} constant column(s)",
+            'columns': const_cols,
+            'impact_rows': 0,
+            'impact_cols': len(const_cols),
+            'impact_type': 'cols_removed',
+            'severity': 'low',
+            'safe': True,
+            'description': f"Columns: {', '.join(const_cols)}. These provide no information.",
+        })
+
+    # Type mismatches
+    type_mismatch_cols = [col for col, info in report['column_health'].items() if info.get('type_mismatch')]
+    if type_mismatch_cols:
+        report['issues'].append({
+            'type': 'type_mismatch',
+            'severity': 'low',
+            'message': f"{len(type_mismatch_cols)} column(s) appear numeric but are stored as text",
+        })
+        report['recommendations'].append({
+            'id': 'fix_types',
+            'label': f"Convert {len(type_mismatch_cols)} column(s) from text to numeric",
+            'columns': type_mismatch_cols,
+            'impact_rows': 0,
+            'impact_cols': 0,
+            'impact_type': 'types_fixed',
+            'severity': 'low',
+            'safe': True,
+            'description': f"Columns: {', '.join(type_mismatch_cols)}. Non-numeric values will become missing.",
+        })
+
+    # Whitespace
+    ws_cols = [col for col, info in report['column_health'].items() if info.get('has_whitespace')]
+    if ws_cols:
+        report['issues'].append({
+            'type': 'whitespace',
+            'severity': 'low',
+            'message': f"{len(ws_cols)} column(s) have leading/trailing whitespace",
+        })
+        report['recommendations'].append({
+            'id': 'trim_whitespace',
+            'label': f"Trim whitespace in {len(ws_cols)} column(s)",
+            'columns': ws_cols,
+            'impact_rows': 0,
+            'impact_cols': 0,
+            'impact_type': 'values_cleaned',
+            'severity': 'low',
+            'safe': True,
+            'description': f"Columns: {', '.join(ws_cols)}. Removes leading/trailing spaces.",
+        })
+
+    # Quality score
+    missing_ratio = report['total_missing'] / report['total_cells'] if report['total_cells'] > 0 else 0
+    dup_ratio = report['total_duplicates'] / n_rows if n_rows > 0 else 0
+    missing_score = max(0, 100 - (missing_ratio * 100))
+    dup_score = max(0, 100 - (dup_ratio * 100))
+
+    # Outlier average
+    outlier_ratios = [info['outlier_pct'] / 100 for info in report['column_health'].values() if info['outlier_pct'] > 0]
+    avg_outlier = np.mean(outlier_ratios) if outlier_ratios else 0
+    outlier_score = max(0, 100 - (avg_outlier * 50))
+
+    report['quality_score'] = round((missing_score * 0.4) + (dup_score * 0.3) + (outlier_score * 0.3), 1)
+    report['quality_breakdown'] = {
+        'missing_score': round(missing_score, 1),
+        'duplicate_score': round(dup_score, 1),
+        'outlier_score': round(outlier_score, 1),
+    }
+
+    return report
+
+
+def apply_selected_recommendations(df, selected_ids, report):
+    """
+    Apply selected cleaning recommendations from the health report.
+    Returns cleaned dataframe and log of actions.
+    """
+    df_clean = df.copy()
+    log = []
+
+    # Always handle duplicates first to avoid cascade issues
+    if 'remove_duplicates' in selected_ids:
+        before = len(df_clean)
+        df_clean = df_clean.drop_duplicates()
+        removed = before - len(df_clean)
+        if removed > 0:
+            log.append(f"Removed {removed:,} exact duplicate rows")
+
+    # Drop high-missing columns
+    if 'drop_high_missing_cols' in selected_ids:
+        rec = next((r for r in report['recommendations'] if r['id'] == 'drop_high_missing_cols'), None)
+        if rec and rec.get('columns'):
+            existing = [c for c in rec['columns'] if c in df_clean.columns]
+            if existing:
+                df_clean = df_clean.drop(columns=existing)
+                log.append(f"Dropped {len(existing)} column(s) with >50% missing: {', '.join(existing)}")
+
+    # Drop constant columns
+    if 'drop_constant_cols' in selected_ids:
+        rec = next((r for r in report['recommendations'] if r['id'] == 'drop_constant_cols'), None)
+        if rec and rec.get('columns'):
+            existing = [c for c in rec['columns'] if c in df_clean.columns]
+            if existing:
+                df_clean = df_clean.drop(columns=existing)
+                log.append(f"Dropped {len(existing)} constant column(s): {', '.join(existing)}")
+
+    # Impute missing values (no rows removed)
+    if 'impute_missing' in selected_ids:
+        rec = next((r for r in report['recommendations'] if r['id'] == 'impute_missing'), None)
+        if rec and rec.get('columns'):
+            for col in rec['columns']:
+                if col in df_clean.columns and df_clean[col].isnull().any():
+                    n_filled = int(df_clean[col].isnull().sum())
+                    if pd.api.types.is_numeric_dtype(df_clean[col]):
+                        val = df_clean[col].median()
+                        df_clean[col] = df_clean[col].fillna(val)
+                        log.append(f"Filled {n_filled:,} missing in '{col}' with median ({val})")
+                    else:
+                        mode_vals = df_clean[col].mode()
+                        if len(mode_vals) > 0:
+                            val = mode_vals.iloc[0]
+                            df_clean[col] = df_clean[col].fillna(val)
+                            log.append(f"Filled {n_filled:,} missing in '{col}' with mode ('{val}')")
+
+    # Fix types
+    if 'fix_types' in selected_ids:
+        rec = next((r for r in report['recommendations'] if r['id'] == 'fix_types'), None)
+        if rec and rec.get('columns'):
+            for col in rec['columns']:
+                if col in df_clean.columns:
+                    df_clean[col] = pd.to_numeric(df_clean[col], errors='coerce')
+                    log.append(f"Converted '{col}' to numeric type")
+
+    # Trim whitespace
+    if 'trim_whitespace' in selected_ids:
+        rec = next((r for r in report['recommendations'] if r['id'] == 'trim_whitespace'), None)
+        if rec and rec.get('columns'):
+            for col in rec['columns']:
+                if col in df_clean.columns and df_clean[col].dtype == 'object':
+                    df_clean[col] = df_clean[col].apply(lambda x: str(x).strip() if pd.notna(x) else x)
+                    log.append(f"Trimmed whitespace in '{col}'")
+
+    return df_clean, log
+
 
 def get_transformation_suggestions(df):
     """
