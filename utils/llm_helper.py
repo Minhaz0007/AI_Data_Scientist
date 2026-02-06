@@ -85,6 +85,13 @@ LLM_PROVIDERS = {
 PROVIDER_PRIORITY = ['anthropic', 'openai', 'groq', 'mistral', 'together', 'cohere', 'google']
 
 
+def _clean_api_key(key):
+    """Clean API key by removing whitespace and quotes."""
+    if isinstance(key, str):
+        return key.strip().strip('"').strip("'").strip()
+    return key
+
+
 def get_available_provider():
     """
     Auto-detect available LLM provider based on configured API keys.
@@ -109,7 +116,7 @@ def get_available_provider():
             api_key = os.environ.get(env_var)
 
         if api_key:
-            return provider, api_key, config['default_model']
+            return provider, _clean_api_key(api_key), config['default_model']
 
     return None, None, None
 
@@ -138,7 +145,7 @@ def get_all_available_providers():
             api_key = os.environ.get(env_var)
 
         if api_key:
-            available.append((provider, api_key, config['default_model']))
+            available.append((provider, _clean_api_key(api_key), config['default_model']))
 
     return available
 
@@ -206,6 +213,8 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
 
     if not api_key:
         return "Error: API key is missing. Please configure it in Streamlit secrets or environment variables."
+
+    api_key = _clean_api_key(api_key)
 
     try:
         client = get_llm_client(provider, api_key)

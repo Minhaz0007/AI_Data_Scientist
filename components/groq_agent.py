@@ -6,7 +6,7 @@ and can answer questions about data in the context of the current tab.
 
 import streamlit as st
 import pandas as pd
-from utils.llm_helper import get_ai_response, get_available_provider, LLM_PROVIDERS
+from utils.llm_helper import get_ai_response, get_available_provider, LLM_PROVIDERS, _clean_api_key
 
 # Tab-specific context and suggestion prompts
 TAB_CONTEXT = {
@@ -196,7 +196,7 @@ def _get_groq_provider():
         groq_key = os.environ.get('GROQ_API_KEY')
 
     if groq_key:
-        return 'groq', groq_key, LLM_PROVIDERS['groq']['default_model']
+        return 'groq', _clean_api_key(groq_key), LLM_PROVIDERS['groq']['default_model']
 
     return get_available_provider()
 
