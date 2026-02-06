@@ -1,7 +1,7 @@
 """
-Groq Chat Agent - Appears on every tab as a contextual AI assistant.
-Provides suggestions on file load and can answer questions about data
-in the context of the current tab.
+Enhanced AI Assistant - Appears on every tab as a contextual AI navigation helper.
+Provides suggestions on file load, helps users understand what to do,
+and can answer questions about data in the context of the current tab.
 """
 
 import streamlit as st
@@ -11,154 +11,153 @@ from utils.llm_helper import get_ai_response, get_available_provider, LLM_PROVID
 # Tab-specific context and suggestion prompts
 TAB_CONTEXT = {
     "Data Ingestion": {
-        "role": "data ingestion specialist",
+        "role": "friendly data ingestion guide",
         "focus": "file formats, data sources, loading strategies, data quality first impressions",
         "suggestions_prompt": (
-            "The user just loaded a dataset. As a data ingestion specialist, provide 5-7 SHORT, actionable suggestions. "
-            "Cover: data format observations, encoding/delimiter issues, column naming conventions, "
-            "immediate data quality red flags, recommended next steps for profiling. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user just loaded a dataset. As a friendly guide (assume no technical background), provide 5-7 SHORT, actionable suggestions. "
+            "Explain in plain language: what the data looks like, if there are any obvious issues, "
+            "and what they should do next. Avoid jargon. Use bullet points."
         ),
+        "help_text": "I can help you understand your data after you upload it. I'll tell you what I see and suggest next steps.",
     },
     "Data Profiling": {
-        "role": "data profiling expert",
+        "role": "friendly data exploration guide",
         "focus": "statistical summaries, distributions, data types, missing values, correlations",
         "suggestions_prompt": (
-            "The user is profiling this dataset. Provide 5-7 SHORT, actionable profiling suggestions. "
-            "Cover: which columns to examine first, expected distributions, correlation hypotheses, "
-            "data type mismatches to check, missing value patterns to investigate. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user is exploring this dataset. Provide 5-7 SHORT suggestions in plain language. "
+            "Tell them: which columns look interesting, what patterns you see, "
+            "whether there are quality issues, and what to check next. No jargon."
         ),
+        "help_text": "I'll help you understand what your data looks like - the patterns, quality issues, and interesting things to explore.",
     },
     "Data Cleaning": {
-        "role": "data cleaning expert",
+        "role": "friendly data cleaning guide",
         "focus": "missing values, duplicates, outliers, data type corrections, standardization",
         "suggestions_prompt": (
-            "The user wants to clean this dataset. Provide 5-7 SHORT, actionable cleaning suggestions. "
-            "Cover: missing value strategy per column, duplicate detection, outlier handling, "
-            "data type fixes, string standardization, column renaming. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants to clean this dataset. Provide 5-7 SHORT, practical suggestions in plain language. "
+            "Tell them: what needs fixing, which approach to use for each issue, "
+            "and explain WHY in simple terms. No jargon."
         ),
+        "help_text": "I'll suggest how to fix issues in your data - like filling gaps, removing duplicates, and fixing errors.",
     },
     "Transformation": {
-        "role": "data transformation specialist",
+        "role": "friendly data transformation guide",
         "focus": "filtering, aggregation, pivoting, merging, calculated columns",
         "suggestions_prompt": (
-            "The user wants to transform this dataset. Provide 5-7 SHORT, actionable transformation suggestions. "
-            "Cover: useful filters, aggregation ideas, pivot possibilities, "
-            "calculated columns to create, data reshaping opportunities. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants to transform this dataset. Provide 5-7 SHORT suggestions in plain language. "
+            "Suggest: useful ways to filter or reshape the data, "
+            "new columns they could create, and how to organize data better. Keep it simple."
         ),
+        "help_text": "I'll help you reshape and organize your data - filtering, combining, and creating new columns.",
     },
     "Visualization": {
-        "role": "data visualization expert",
+        "role": "friendly visualization guide",
         "focus": "chart types, visual encodings, storytelling with data, dashboard design",
         "suggestions_prompt": (
-            "The user wants to visualize this dataset. Provide 5-7 SHORT, actionable visualization suggestions. "
-            "Cover: best chart types for the columns, color encoding ideas, "
-            "comparison charts, distribution plots, relationship visualizations. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants to visualize this dataset. Provide 5-7 SHORT suggestions in plain language. "
+            "Recommend: the best chart types for their specific columns, "
+            "what comparisons would be interesting, and how to tell a story with the data."
         ),
+        "help_text": "I'll suggest the best ways to visualize your data - which charts to use and what stories they can tell.",
     },
     "Dashboard": {
-        "role": "dashboard design expert",
+        "role": "friendly dashboard guide",
         "focus": "KPI selection, layout design, interactive filters, real-time metrics",
         "suggestions_prompt": (
-            "The user wants to build a dashboard. Provide 5-7 SHORT, actionable dashboard suggestions. "
-            "Cover: key KPIs to track, chart combinations, filter recommendations, "
-            "layout ideas, metric cards to pin. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user is building a dashboard. Provide 5-7 SHORT suggestions in plain language. "
+            "Recommend: key numbers to track, best chart combinations, "
+            "and how to organize the dashboard for maximum clarity."
         ),
+        "help_text": "I'll help you build an effective dashboard - choosing the right metrics and layout.",
     },
     "Reporting": {
-        "role": "data reporting specialist",
+        "role": "friendly report generation guide",
         "focus": "report structure, key findings, executive summaries, export formats",
         "suggestions_prompt": (
-            "The user wants to generate a report. Provide 5-7 SHORT, actionable reporting suggestions. "
-            "Cover: report sections to include, key findings to highlight, "
-            "visualization selection for reports, executive summary points, export format choice. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants to generate a report. Provide 5-7 SHORT suggestions in plain language. "
+            "Recommend: what to include in the report, how to structure findings, "
+            "and which export format to choose."
         ),
+        "help_text": "I'll help you create a professional report - what to include and how to present your findings.",
     },
     "Statistical Analysis": {
-        "role": "statistician",
+        "role": "friendly statistics guide",
         "focus": "hypothesis testing, statistical tests, confidence intervals, p-values",
         "suggestions_prompt": (
-            "The user wants statistical analysis. Provide 5-7 SHORT, actionable analysis suggestions. "
-            "Cover: appropriate statistical tests, hypothesis ideas, "
-            "normality checks needed, correlation analysis, group comparison tests. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants statistical analysis. Provide 5-7 SHORT suggestions in VERY plain language. "
+            "Explain what tests would be useful and WHY in simple terms. "
+            "Avoid statistical jargon - explain concepts like you would to a friend."
         ),
+        "help_text": "I'll explain statistical tests in plain language and help you understand what they mean for your data.",
     },
     "Feature Engineering": {
-        "role": "feature engineering expert",
+        "role": "friendly feature creation guide",
         "focus": "feature creation, polynomial features, interactions, encoding, selection",
         "suggestions_prompt": (
-            "The user wants to engineer features. Provide 5-7 SHORT, actionable suggestions. "
-            "Cover: polynomial features to try, interaction terms, datetime extractions, "
-            "encoding strategies for categoricals, feature selection methods. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants to create new features. Provide 5-7 SHORT suggestions in plain language. "
+            "Explain: what new columns would help predictions, "
+            "how to extract useful info from dates/text, and which features matter most."
         ),
+        "help_text": "I'll help you create new data points that can improve your predictions and analysis.",
     },
     "Predictive Modeling": {
-        "role": "machine learning engineer",
+        "role": "friendly machine learning guide",
         "focus": "model selection, training, evaluation, hyperparameter tuning",
         "suggestions_prompt": (
-            "The user wants to build predictive models. Provide 5-7 SHORT, actionable suggestions. "
-            "Cover: recommended algorithms, target variable selection, train/test split strategy, "
-            "evaluation metrics, potential overfitting concerns. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants to build prediction models. Provide 5-7 SHORT suggestions in plain language. "
+            "Recommend: what to predict, which algorithm to try first, "
+            "how to know if the model is good, and common pitfalls to avoid. No jargon."
         ),
+        "help_text": "I'll guide you through building AI models - what to predict, which approach to use, and how to evaluate results.",
     },
     "Time Series": {
-        "role": "time series analyst",
+        "role": "friendly time series guide",
         "focus": "trend analysis, seasonality, forecasting, ARIMA, decomposition",
         "suggestions_prompt": (
-            "The user wants to do time series analysis. Provide 5-7 SHORT, actionable suggestions. "
-            "Cover: datetime column identification, trend/seasonality detection, "
-            "stationarity tests, forecasting model selection, lag features. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants to analyze time-based data. Provide 5-7 SHORT suggestions in plain language. "
+            "Help them: identify which column has dates, spot trends and patterns, "
+            "and choose the right forecasting approach."
         ),
+        "help_text": "I'll help you find trends over time and forecast what might happen next.",
     },
     "Advanced Analysis": {
-        "role": "advanced analytics specialist",
+        "role": "friendly advanced analytics guide",
         "focus": "PCA, t-SNE, anomaly detection, clustering, text analysis",
         "suggestions_prompt": (
-            "The user wants advanced analysis. Provide 5-7 SHORT, actionable suggestions. "
-            "Cover: dimensionality reduction candidates, anomaly detection approach, "
-            "clustering feasibility, text analysis if applicable, recommended techniques. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants advanced analysis. Provide 5-7 SHORT suggestions in plain language. "
+            "Explain: which advanced techniques would help, what they do in simple terms, "
+            "and what insights they can reveal."
         ),
+        "help_text": "I'll explain advanced analysis techniques in simple terms and help you find hidden patterns.",
     },
     "Workflow Automation": {
-        "role": "data pipeline architect",
+        "role": "friendly automation guide",
         "focus": "automated pipelines, step sequencing, reproducibility, scheduling",
         "suggestions_prompt": (
-            "The user wants to automate workflows. Provide 5-7 SHORT, actionable suggestions. "
-            "Cover: pipeline steps to automate, recommended sequence, "
-            "error handling considerations, reproducibility tips, scheduling ideas. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants to automate their workflow. Provide 5-7 SHORT suggestions in plain language. "
+            "Recommend: what steps to automate, the best order, "
+            "and how to set up a reliable pipeline."
         ),
+        "help_text": "I'll help you set up an automated pipeline so you can process data with one click.",
     },
     "AI Insights": {
-        "role": "AI analyst",
+        "role": "friendly AI analysis guide",
         "focus": "comprehensive AI-powered analysis, pattern discovery, recommendations",
         "suggestions_prompt": (
-            "The user wants AI insights. Provide 5-7 SHORT, actionable suggestions. "
-            "Cover: analysis angles to explore, hidden patterns to look for, "
-            "business questions the data can answer, anomalies to investigate. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "The user wants AI insights. Provide 5-7 SHORT suggestions in plain language. "
+            "Tell them: what angles to explore, what hidden patterns to look for, "
+            "and what business questions the data can answer."
         ),
+        "help_text": "I'll help you get the most from AI analysis - what to look for and how to interpret results.",
     },
     "Chat": {
-        "role": "data assistant",
+        "role": "friendly data conversation guide",
         "focus": "natural language Q&A about data, exploration guidance",
         "suggestions_prompt": (
             "The user is chatting about their data. Provide 5-7 SHORT, interesting questions they could ask. "
-            "Cover: data exploration questions, statistical queries, "
-            "comparison questions, trend questions, actionable insight questions. "
-            "Keep each suggestion to 1-2 sentences. Use bullet points."
+            "Make them conversational and practical - things a business person would want to know."
         ),
+        "help_text": "Just type a question in plain English and I'll analyze your data to find the answer!",
     },
 }
 
@@ -186,7 +185,6 @@ def _get_data_context(df, max_rows=5):
 
 def _get_groq_provider():
     """Get Groq provider specifically, falling back to any available provider."""
-    # Try Groq first
     import os
     groq_key = None
     try:
@@ -200,7 +198,6 @@ def _get_groq_provider():
     if groq_key:
         return 'groq', groq_key, LLM_PROVIDERS['groq']['default_model']
 
-    # Fall back to any available provider
     return get_available_provider()
 
 
@@ -219,6 +216,8 @@ def generate_suggestions(page_name):
 
     prompt = (
         f"You are a {tab_info['role']}. Focus area: {tab_info['focus']}.\n\n"
+        f"IMPORTANT: The user may not have any data science background. "
+        f"Explain everything in simple, friendly language. No jargon.\n\n"
         f"Here is the dataset context:\n{data_ctx}\n\n"
         f"{tab_info['suggestions_prompt']}"
     )
@@ -231,8 +230,7 @@ def generate_suggestions(page_name):
 
 
 def render_agent(page_name):
-    """Render the Groq chat agent panel for the current tab."""
-    # Initialize per-tab chat history
+    """Render the AI assistant panel for the current tab."""
     chat_key = f"groq_agent_messages_{page_name}"
     suggestions_key = f"groq_suggestions_{page_name}"
     suggestions_generated_key = f"groq_suggestions_generated_{page_name}"
@@ -241,29 +239,49 @@ def render_agent(page_name):
         st.session_state[chat_key] = []
 
     st.markdown("---")
-    st.markdown("### Groq AI Assistant")
 
-    provider_code, api_key, model = _get_groq_provider()
-    if provider_code:
-        provider_name = LLM_PROVIDERS[provider_code]['name']
-        st.caption(f"Powered by **{provider_name}** ({model})")
-    else:
-        st.warning(
-            "No AI provider configured. Add a GROQ_API_KEY (or any supported API key) "
-            "to your environment or Streamlit secrets to enable the AI assistant."
-        )
+    # Modern header
+    tab_info = TAB_CONTEXT.get(page_name, TAB_CONTEXT["Chat"])
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.markdown("### AI Assistant")
+        st.caption(tab_info.get('help_text', 'Ask me anything about your data.'))
+    with col2:
+        provider_code, api_key, model = _get_groq_provider()
+        if provider_code:
+            provider_name = LLM_PROVIDERS[provider_code]['name']
+            st.markdown(f"""
+            <div class="status-indicator status-saved" style="margin-top: 8px;">
+                ✓ {provider_name}
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            st.markdown("""
+            <div class="status-indicator status-error" style="margin-top: 8px;">
+                ✗ No AI configured
+            </div>
+            """, unsafe_allow_html=True)
+
+    if not provider_code:
+        st.markdown("""
+        <div class="help-tip">
+            <strong>🔧 Setup Required</strong><br>
+            Add an API key (GROQ_API_KEY, ANTHROPIC_API_KEY, OPENAI_API_KEY, or GOOGLE_API_KEY)
+            to your environment or Streamlit secrets to enable the AI assistant.
+        </div>
+        """, unsafe_allow_html=True)
         return
 
     df = st.session_state.get('data')
 
     # ── Auto-suggestions on data load ──
     if df is not None:
-        # Track whether suggestions have been generated for this data + tab combo
         data_fingerprint = f"{len(df)}_{len(df.columns)}_{hash(tuple(df.columns))}"
         gen_key = f"{suggestions_generated_key}_{data_fingerprint}"
 
         if not st.session_state.get(gen_key, False):
-            with st.spinner("Generating suggestions..."):
+            with st.spinner("Generating smart suggestions..."):
                 suggestions = generate_suggestions(page_name)
                 if suggestions:
                     st.session_state[suggestions_key] = suggestions
@@ -271,7 +289,7 @@ def render_agent(page_name):
 
         # Show suggestions
         if st.session_state.get(suggestions_key):
-            with st.expander("AI Suggestions", expanded=True):
+            with st.expander("AI Suggestions for This Page", expanded=True):
                 st.markdown(st.session_state[suggestions_key])
                 if st.button("Refresh Suggestions", key=f"refresh_sugg_{page_name}"):
                     with st.spinner("Refreshing..."):
@@ -280,10 +298,15 @@ def render_agent(page_name):
                             st.session_state[suggestions_key] = suggestions
                             st.rerun()
     else:
-        st.info("Upload a dataset to get AI-powered suggestions for this tab.")
+        st.markdown("""
+        <div class="help-tip">
+            <strong>📂 Upload data to unlock AI suggestions</strong><br>
+            Once you load a dataset, I'll automatically analyze it and give you personalized suggestions for this page.
+        </div>
+        """, unsafe_allow_html=True)
 
     # ── Chat interface ──
-    with st.expander("Chat", expanded=len(st.session_state[chat_key]) > 0):
+    with st.expander("Ask Me Anything", expanded=len(st.session_state[chat_key]) > 0):
         # Display chat history
         for msg in st.session_state[chat_key]:
             with st.chat_message(msg["role"]):
@@ -291,14 +314,13 @@ def render_agent(page_name):
 
         # Quick prompts when chat is empty
         if not st.session_state[chat_key] and df is not None:
-            tab_info = TAB_CONTEXT.get(page_name, TAB_CONTEXT["Chat"])
-            st.caption(f"Ask me anything about {tab_info['focus']}")
+            st.caption(f"Try asking about: {tab_info['focus']}")
 
         if df is not None:
             user_input = st.text_input(
                 "Ask the AI assistant...",
                 key=f"groq_input_{page_name}",
-                placeholder=f"Ask about {TAB_CONTEXT.get(page_name, TAB_CONTEXT['Chat'])['focus']}..."
+                placeholder=f"e.g., What should I do with this data on this page?"
             )
 
             col1, col2 = st.columns([1, 4])
@@ -312,7 +334,6 @@ def render_agent(page_name):
             if send and user_input:
                 st.session_state[chat_key].append({"role": "user", "content": user_input})
 
-                tab_info = TAB_CONTEXT.get(page_name, TAB_CONTEXT["Chat"])
                 data_ctx = _get_data_context(df)
 
                 # Build conversation history
@@ -323,12 +344,14 @@ def render_agent(page_name):
                         history += f"{msg['role'].upper()}: {msg['content']}\n"
 
                 prompt = (
-                    f"You are a {tab_info['role']}. The user is on the '{page_name}' tab. "
+                    f"You are a {tab_info['role']}. The user is on the '{page_name}' page. "
                     f"Focus area: {tab_info['focus']}.\n\n"
+                    f"IMPORTANT: The user may not have data science experience. "
+                    f"Always explain in plain, simple language. No jargon without explanation.\n\n"
                     f"Dataset context:\n{data_ctx}\n"
                     f"{history}\n"
                     f"User question: {user_input}\n\n"
-                    f"Provide a helpful, concise answer. If code is needed, use Python/pandas snippets."
+                    f"Provide a helpful, friendly, concise answer. If code is needed, use Python/pandas snippets and explain what they do."
                 )
 
                 with st.spinner("Thinking..."):
