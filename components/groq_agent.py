@@ -224,6 +224,8 @@ def generate_suggestions(page_name):
 
     try:
         response = get_ai_response(prompt, api_key, provider_code, model=model, max_tokens=1024)
+        if response and response.startswith("Error generating response:"):
+            return None
         return response
     except Exception:
         return None
@@ -297,6 +299,11 @@ def render_agent(page_name):
                         if suggestions:
                             st.session_state[suggestions_key] = suggestions
                             st.rerun()
+                        else:
+                            st.warning(
+                                "Could not refresh suggestions. The API rate limit may "
+                                "have been reached. Please wait a few minutes and try again."
+                            )
     else:
         st.markdown("""
         <div class="help-tip">
@@ -357,5 +364,11 @@ def render_agent(page_name):
                 with st.spinner("Thinking..."):
                     response = get_ai_response(prompt, api_key, provider_code, model=model, max_tokens=2048)
 
-                st.session_state[chat_key].append({"role": "assistant", "content": response})
+                if response and "Rate limit reached" in response:
+                    st.session_state[chat_key].append({
+                        "role": "assistant",
+                        "content": response
+                    })
+                else:
+                    st.session_state[chat_key].append({"role": "assistant", "content": response})
                 st.rerun()

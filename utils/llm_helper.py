@@ -1,5 +1,9 @@
 import os
+import time
+import logging
 import streamlit as st
+
+logger = logging.getLogger(__name__)
 
 # LLM Provider configurations with environment variable names
 LLM_PROVIDERS = {
@@ -187,6 +191,77 @@ def get_llm_client(provider, api_key):
     else:
         return _get_cached_client(provider, api_key)
 
+# Groq model fallback order: try smaller/cheaper models when rate-limited
+GROQ_FALLBACK_MODELS = [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'gemma2-9b-it',
+]
+
+# Maximum retries for transient errors (not rate limits)
+_GROQ_MAX_RETRIES = 2
+_GROQ_RETRY_DELAY = 1  # seconds
+
+
+def _is_rate_limit_error(exc):
+    """Check if an exception is a rate limit (429) error."""
+    # Groq SDK raises groq.RateLimitError for 429 responses
+    exc_type = type(exc).__name__
+    if exc_type == 'RateLimitError':
+        return True
+    # Fallback: check the string representation
+    err_str = str(exc)
+    if '429' in err_str or 'rate_limit' in err_str.lower() or 'rate limit' in err_str.lower():
+        return True
+    return False
+
+
+def _groq_request_with_fallback(client, model_name, prompt, max_tokens):
+    """Make a Groq API request with automatic fallback to smaller models on rate limit."""
+    # Build fallback chain starting from the requested model
+    models_to_try = [model_name]
+    for fallback in GROQ_FALLBACK_MODELS:
+        if fallback != model_name and fallback not in models_to_try:
+            models_to_try.append(fallback)
+
+    last_error = None
+    for current_model in models_to_try:
+        for attempt in range(_GROQ_MAX_RETRIES + 1):
+            try:
+                response = client.chat.completions.create(
+                    model=current_model,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=max_tokens
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                last_error = e
+                if _is_rate_limit_error(e):
+                    logger.warning(
+                        "Groq rate limit hit for model '%s' (attempt %d). %s",
+                        current_model, attempt + 1, str(e)
+                    )
+                    # Don't retry same model on rate limit — move to fallback
+                    break
+                else:
+                    # Transient error — retry with backoff
+                    if attempt < _GROQ_MAX_RETRIES:
+                        time.sleep(_GROQ_RETRY_DELAY * (attempt + 1))
+                    else:
+                        raise
+
+    # All models exhausted — return a user-friendly message
+    return (
+        "**Rate limit reached** — Your Groq free-tier daily token quota has been exceeded "
+        "for all available models.\n\n"
+        "**What you can do:**\n"
+        "- Wait ~15-30 minutes for the limit to partially reset, then try again\n"
+        "- Upgrade to Groq's Dev Tier at https://console.groq.com/settings/billing "
+        "for higher limits\n"
+        "- Configure a different AI provider (OpenAI, Anthropic, Google) as a backup"
+    )
+
+
 def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_tokens=4096):
     """
     Generate a response from an LLM.
@@ -243,14 +318,7 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
 
         elif provider == 'groq':
             model_name = model or LLM_PROVIDERS['groq']['default_model']
-            response = client.chat.completions.create(
-                model=model_name,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=max_tokens
-            )
-            return response.choices[0].message.content
+            return _groq_request_with_fallback(client, model_name, prompt, max_tokens)
 
         elif provider == 'mistral':
             model_name = model or LLM_PROVIDERS['mistral']['default_model']
@@ -297,6 +365,12 @@ def get_ai_response(prompt, api_key, provider='anthropic', model=None, max_token
             return f"Error: Unsupported provider '{provider}'."
 
     except Exception as e:
+        if _is_rate_limit_error(e):
+            return (
+                "**Rate limit reached** — Your API token quota has been exceeded.\n\n"
+                "Please wait a few minutes and try again, or upgrade your plan "
+                "for higher limits."
+            )
         return f"Error generating response: {str(e)}"
 
 def generate_insights_prompt(df_summary, analysis_results):
