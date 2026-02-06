@@ -61,6 +61,7 @@ def apply_theme():
        FIX: Hide Streamlit sidebar collapse button icon text leak
        The Material Icons ligature text (keyboard_double_arrow_left)
        renders as raw text when the font fails to load.
+       We hide the text color and replace it with an SVG background.
        ═══════════════════════════════════════════════════════════ */
     [data-testid="stSidebarCollapseButton"] button,
     [data-testid="collapsedControl"] button,
@@ -68,10 +69,14 @@ def apply_theme():
         font-size: 0 !important;
         overflow: hidden !important;
     }
+
+    /* Target the icon element which contains the leaking text */
     [data-testid="stSidebarCollapseButton"] button span,
     [data-testid="collapsedControl"] button span,
     [data-testid="stSidebarCollapseButton"] button [data-testid="stIconMaterial"],
-    [data-testid="collapsedControl"] button [data-testid="stIconMaterial"] {
+    [data-testid="collapsedControl"] button [data-testid="stIconMaterial"],
+    [data-testid="stExpander"] [data-testid="stIconMaterial"] {
+        color: transparent !important; /* Hide the text "ub", "arrow...", etc */
         font-size: 1.25rem !important;
         overflow: hidden !important;
         display: inline-flex !important;
@@ -79,6 +84,37 @@ def apply_theme():
         height: 24px !important;
         align-items: center !important;
         justify-content: center !important;
+        position: relative !important;
+    }
+
+    /* Inject SVG icon replacements */
+    [data-testid="stSidebarCollapseButton"] button [data-testid="stIconMaterial"]::after,
+    [data-testid="collapsedControl"] button [data-testid="stIconMaterial"]::after,
+    [data-testid="stExpander"] [data-testid="stIconMaterial"]::after,
+    [data-testid="stSidebarCollapseButton"] button span::after,
+    [data-testid="collapsedControl"] button span::after {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-repeat: no-repeat;
+        background-position: center;
+        pointer-events: none;
+    }
+
+    /* Chevron Left for Sidebar Collapse */
+    [data-testid="stSidebarCollapseButton"] button [data-testid="stIconMaterial"]::after,
+    [data-testid="stSidebarCollapseButton"] button span::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364648c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='15 18 9 12 15 6'%3E%3C/polyline%3E%3C/svg%3E") !important;
+    }
+
+    /* Chevron Right for Collapsed Control and Expanders */
+    [data-testid="collapsedControl"] button [data-testid="stIconMaterial"]::after,
+    [data-testid="collapsedControl"] button span::after,
+    [data-testid="stExpander"] [data-testid="stIconMaterial"]::after {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364648c' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'%3E%3C/polyline%3E%3C/svg%3E") !important;
     }
     /* Hide any raw text in the collapse button area */
     [data-testid="stSidebarCollapseButton"],
