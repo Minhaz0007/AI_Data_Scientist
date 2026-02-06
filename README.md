@@ -121,6 +121,7 @@ A comprehensive AI-powered **Data Science & Machine Learning** platform built wi
 - **Multiple LLM providers:**
   - Anthropic Claude (Claude Sonnet 4, Claude 3.5 Sonnet, Opus, Haiku)
   - Google Gemini (1.5 Pro, 1.5 Flash)
+  - Groq (Llama 3, Mixtral, Gemma)
   - OpenAI GPT (GPT-4o, GPT-4 Turbo)
 - **Model selection** for each provider
 - **Configurable token limits**
@@ -176,6 +177,7 @@ streamlit run app.py
 | `APP_PASSWORD` | Recommended | Password to access the app |
 | `ANTHROPIC_API_KEY` | No | Anthropic Claude API key |
 | `GOOGLE_API_KEY` | No | Google Gemini API key |
+| `GROQ_API_KEY` | No | Groq API key |
 | `OPENAI_API_KEY` | No | OpenAI API key |
 
 ## Deployment
@@ -230,7 +232,7 @@ ai-data-analyst/
 - **Data Processing:** Pandas, NumPy, SciPy
 - **Machine Learning:** Scikit-learn, Statsmodels
 - **Visualization:** Plotly, Matplotlib, Seaborn
-- **LLM Integration:** Anthropic, Google GenAI, OpenAI
+- **LLM Integration:** Anthropic, Google GenAI, Groq, OpenAI
 - **Database:** PostgreSQL (Neon)
 - **Report Generation:** ReportLab (PDF), python-docx (Word)
 
@@ -251,11 +253,12 @@ ai-data-analyst/
 You can enter API keys in two ways:
 
 1. **In the UI:** Enter your API key in the AI Insights or Chat sections
-2. **Environment Variables:** Set `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, or `OPENAI_API_KEY`
+2. **Environment Variables:** Set `ANTHROPIC_API_KEY`, `GOOGLE_API_KEY`, `GROQ_API_KEY`, or `OPENAI_API_KEY`
 
 Get your API keys:
 - [Anthropic Console](https://console.anthropic.com/)
 - [Google AI Studio](https://aistudio.google.com/)
+- [Groq Console](https://console.groq.com/)
 - [OpenAI Platform](https://platform.openai.com/)
 
 ## Contributing
