@@ -61,6 +61,7 @@ APP_PASSWORD = "your-secure-password-here"
 # Optional: Pre-configure AI API keys
 ANTHROPIC_API_KEY = "sk-ant-..."
 GOOGLE_API_KEY = "AIza..."
+GROQ_API_KEY = "gsk_..."
 OPENAI_API_KEY = "sk-..."
 ```
 
@@ -174,6 +175,7 @@ After deploying your app:
 | `APP_PASSWORD` | Recommended | Password to access the app |
 | `ANTHROPIC_API_KEY` | No | Anthropic Claude API key |
 | `GOOGLE_API_KEY` | No | Google Gemini API key |
+| `GROQ_API_KEY` | No | Groq API key |
 | `OPENAI_API_KEY` | No | OpenAI API key |
 
 ---
